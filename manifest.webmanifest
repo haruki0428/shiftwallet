@@ -1,12 +1,12 @@
 {
-  "name": "ShiftWallet v2 - シフト・給与・家計簿",
+  "name": "ShiftWallet - シフト・給与・家計簿",
   "short_name": "ShiftWallet",
-  "description": "締め日・給料日、複数勤務先、給与見込み、家計簿、予算、残高予測まで管理するPWA",
+  "description": "シフト、給与サイクル、給与目標、固定費、家計簿、残高予測をまとめて管理するPWA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f3f5f7",
-  "theme_color": "#101828",
+  "theme_color": "#111827",
   "lang": "ja",
   "orientation": "portrait-primary",
   "icons": [
@@ -15,7 +15,7 @@
   ],
   "shortcuts": [
     {"name":"シフトを確認","short_name":"シフト","url":"./#shifts"},
-    {"name":"家計簿を確認","short_name":"家計簿","url":"./#money"},
+    {"name":"家計簿を確認","short_name":"家計簿","url":"./#budget"},
     {"name":"分析を見る","short_name":"分析","url":"./#analysis"}
   ]
 }
