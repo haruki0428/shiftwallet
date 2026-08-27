@@ -1,442 +1,201 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="ShiftWallet" />
-  <meta name="format-detection" content="telephone=no" />
-  <title>ShiftWallet v3.0 - シフト・給与・家計簿</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-  <link rel="icon" href="./icons/icon-192.png" />
-  <link rel="stylesheet" href="./styles.css?v=3.0.0" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f5f3ee">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ShiftWallet">
+  <meta name="format-detection" content="telephone=no">
+  <title>ShiftWallet</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css?v=4.0.0">
 </head>
 <body>
-  <div class="app-shell">
+  <div class="app">
     <header class="topbar">
       <div>
-        <div class="brand-line"><p class="eyebrow">SHIFT · PAY · BUDGET</p><span class="version-badge">v3.0</span></div>
+        <p class="subtle" id="currentMonthLabel">—</p>
         <h1>ShiftWallet</h1>
       </div>
-      <div class="top-actions">
-        <button class="icon-btn" id="searchBtn" type="button" aria-label="検索">⌕</button>
-        <button class="icon-btn" id="installBtn" type="button" aria-label="インストール" hidden>＋</button>
-      </div>
+      <button class="plain-icon" id="installBtn" type="button" hidden aria-label="ホーム画面に追加">＋</button>
     </header>
 
     <main>
-      <section class="page active" id="page-dashboard" data-page="dashboard">
-        <div class="card compact-card workplace-switcher">
-          <label><span>表示する勤務先</span><select id="dashboardWorkplace"></select></label>
-        </div>
-
-        <section class="home-card" data-home-card="monthly-income">
-          <div class="card hero-card">
-            <div class="section-head"><div><p class="eyebrow">THIS MONTH</p><h2>今月の収入</h2></div><span class="pill" id="monthIncomeLabel">今月</span></div>
-            <div class="income-duo">
-              <div><span>予定月収</span><b id="monthlyForecast">¥0</b><small>今月に入っている全シフト</small></div>
-              <div><span>現在の月収</span><b id="monthlyCurrent">¥0</b><small>今日までのシフト分</small></div>
-            </div>
-            <div class="mini-inline"><span>今月の予定勤務</span><b id="monthlyHours">0h</b><span>今日まで</span><b id="monthlyCurrentHours">0h</b><span>今週</span><b id="weeklyWorkHours">0h</b></div>
+      <section class="page active" data-page="home" id="page-home">
+        <section class="summary-card">
+          <div class="summary-block">
+            <span>現在の月収</span>
+            <strong id="currentIncome">¥0</strong>
+            <small>固定費差引後 <b id="currentAfterFixed">¥0</b></small>
           </div>
+          <div class="summary-divider"></div>
+          <div class="summary-block">
+            <span>今月の予定月収</span>
+            <strong id="plannedIncome">¥0</strong>
+            <small>固定費差引後 <b id="plannedAfterFixed">¥0</b></small>
+          </div>
+          <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div>
         </section>
 
-        <section class="home-card" data-home-card="next-pay">
-          <div class="hero-card card">
-            <div class="hero-top">
-              <div><p class="muted">次回の給料見込み</p><div class="hero-amount" id="nextPayForecast">¥0</div></div>
-              <div class="payday-pill"><small>給料日</small><b id="nextPayDate">—</b></div>
+        <section class="card goal-card">
+          <div class="row between align-start">
+            <div>
+              <span class="label">今月の目標</span>
+              <div class="goal-amount" id="goalAmountHome">¥0</div>
             </div>
-            <div class="cycle-line" id="nextPayPeriod">対象期間 —</div>
-            <div class="progress-wrap">
-              <div class="progress-labels"><span>目標 <b id="goalAmount">¥0</b></span><span id="goalPercent">0%</span></div>
-              <div class="progress"><div class="progress-bar" id="goalProgress"></div></div>
-            </div>
-            <div class="hero-grid">
-              <div><span>今日までの分</span><b id="nextPayCurrent">¥0</b></div>
-              <div><span>目標まで</span><b id="remainingToGoal">¥0</b></div>
-              <div><span>予定勤務時間</span><b id="cycleHours">0h</b></div>
-              <div><span>必要シフト</span><b id="neededShifts">—</b></div>
+            <div class="goal-right">
+              <span>あと</span>
+              <b id="goalRemainingHome">¥0</b>
             </div>
           </div>
-        </section>
-
-        <section class="home-card" data-home-card="spendable">
-          <div class="money-grid">
-            <div class="card mini-stat"><span>総資産</span><b id="totalAssetsHome">¥0</b><small id="assetBreakdownHome">口座・現金・電子マネー</small></div>
-            <div class="card mini-stat"><span>自由に使えるお金</span><b id="spendableUntilPay">¥0</b><small id="spendableNote">固定費等を控除</small></div>
-            <div class="card mini-stat"><span>1日あたり</span><b id="dailySpendable">¥0</b><small>次回給料日まで</small></div>
-            <div class="card mini-stat"><span>最低残高まで</span><b id="floorBuffer">¥0</b><small id="floorNote">安全余力</small></div>
+          <div class="progress" aria-hidden="true"><i id="goalProgress"></i></div>
+          <div class="goal-foot">
+            <select id="goalPresetHome" aria-label="目標計算に使うプリセット"></select>
+            <span id="goalShiftNeed">プリセットを設定してください</span>
           </div>
         </section>
 
-        <section class="home-card" data-home-card="today-spend">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">SPENDING PACE</p><h2>支出ペース</h2></div></div>
-            <div class="income-duo compact">
-              <div><span>今日使った金額</span><b id="todaySpending">¥0</b></div>
-              <div><span>今週使った金額</span><b id="weekSpending">¥0</b></div>
-            </div>
-            <div id="spendingPaceAlerts" class="alert-stack"></div>
-          </div>
-        </section>
-
-        <section class="home-card" data-home-card="goal">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">GOAL GUIDE</p><h2>目標達成まで</h2></div><button class="text-btn" id="suggestShiftBtn">候補日を作る</button></div>
-            <div class="goal-guide" id="goalGuide"></div>
-            <div id="goalPresetComparison" class="compact-list"></div>
-          </div>
-        </section>
-
-        <section class="home-card" data-home-card="quick">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">QUICK ADD</p><h2>ワンタップでシフト追加</h2></div><input type="date" id="quickDate" class="date-chip" /></div>
-            <div class="preset-strip" id="quickPresetList"></div>
-          </div>
-        </section>
-
-        <section class="home-card" data-home-card="alerts">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">ALERTS</p><h2>お金の通知</h2></div></div>
-            <div id="homeAlerts" class="alert-stack"></div>
-          </div>
-        </section>
-
-        <section class="home-card" data-home-card="cashflow">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">CASH FLOW</p><h2>これからのお金</h2></div><button class="text-btn" data-nav-to="budget">家計簿へ</button></div>
-            <div id="cashflowPreview" class="timeline"></div>
-          </div>
-        </section>
-
-        <section class="home-card" data-home-card="recent">
-          <div class="card">
-            <div class="section-head"><div><p class="eyebrow">RECENT</p><h2>直近のシフト</h2></div><button class="text-btn" data-nav-to="shifts">すべて見る</button></div>
-            <div id="recentShifts" class="list-stack"></div>
-          </div>
+        <section class="card">
+          <div class="section-title"><h2>次のシフト</h2></div>
+          <div id="nextShift" class="quiet-list"></div>
         </section>
       </section>
 
-      <section class="page" id="page-shifts" data-page="shifts">
-        <div class="section-head page-head">
-          <div><p class="eyebrow">SHIFT CALENDAR</p><h2>シフト</h2></div>
-          <div class="header-actions"><button class="secondary-btn" id="copyPrevMonthBtn">前月コピー</button><button class="secondary-btn" id="openBulkShiftModal">一括追加</button><button class="primary-btn" id="openShiftModal">＋ 追加</button></div>
+      <section class="page" data-page="shifts" id="page-shifts">
+        <div class="section-head">
+          <div>
+            <p class="subtle">プリセットを選び、日付をタップ</p>
+            <h2>シフト</h2>
+          </div>
         </div>
-        <div class="filter-row card compact-card">
-          <select id="shiftWorkplaceFilter"></select>
-          <div class="month-controls"><button class="ghost-btn square" id="prevMonth">‹</button><strong id="monthTitle">—</strong><button class="ghost-btn square" id="nextMonth">›</button></div>
-        </div>
-        <div class="card calendar-card">
-          <div class="calendar-weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
-          <div class="calendar-grid" id="calendarGrid"></div>
-        </div>
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">MONTHLY TOTAL</p><h2>月内シフト</h2></div><div class="right-summary"><b id="monthlyShiftIncome">¥0</b><small id="monthlyHoursTotal">0h</small></div></div>
-          <div id="monthlyShiftList" class="list-stack"></div>
+
+        <section class="card preset-panel">
+          <div class="preset-top">
+            <span id="addModeText">追加するプリセットを選択</span>
+            <button class="text-button" id="clearPresetSelection" type="button" hidden>選択解除</button>
+          </div>
+          <div class="preset-strip" id="calendarPresetStrip"></div>
+        </section>
+
+        <section class="calendar-shell">
+          <div class="month-nav">
+            <button class="nav-btn" id="prevMonth" type="button" aria-label="前の月">‹</button>
+            <strong id="calendarMonthTitle">—</strong>
+            <button class="nav-btn" id="nextMonth" type="button" aria-label="次の月">›</button>
+          </div>
+          <div class="weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+          <div class="calendar" id="calendar"></div>
+        </section>
+
+        <div class="month-totals">
+          <span id="shiftCount">0件</span>
+          <b id="viewMonthIncome">¥0</b>
         </div>
       </section>
 
-      <section class="page" id="page-budget" data-page="budget">
-        <div class="section-head page-head">
-          <div><p class="eyebrow">MONEY CENTER</p><h2>家計簿</h2></div>
-          <div class="header-actions"><button class="secondary-btn" id="openIncomeModal">＋ 収入</button><button class="primary-btn" id="openExpenseModal">＋ 支出</button></div>
-        </div>
-        <div class="month-toolbar card soft-card"><button class="ghost-btn square" id="prevBudgetMonth">‹</button><strong id="budgetMonthTitle">—</strong><button class="ghost-btn square" id="nextBudgetMonth">›</button></div>
-        <div class="budget-summary-grid">
-          <div class="card mini-stat"><span>変動支出</span><b id="budgetExpense">¥0</b></div>
-          <div class="card mini-stat"><span>臨時収入</span><b id="budgetIncome">¥0</b></div>
-          <div class="card mini-stat"><span>固定費予定</span><b id="budgetFixed">¥0</b></div>
-          <div class="card mini-stat"><span>カード次回請求</span><b id="budgetCardBill">¥0</b></div>
-        </div>
+      <section class="page" data-page="settings" id="page-settings">
+        <div class="section-head"><div><p class="subtle">必要な設定だけ</p><h2>設定</h2></div></div>
 
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">QUICK EXPENSE</p><h2>よく使う支出</h2></div><button class="text-btn" id="addExpenseTemplateBtn">＋ テンプレート</button></div>
-          <div id="expenseTemplateStrip" class="preset-strip"></div>
-        </div>
+        <section class="card settings-card">
+          <div class="section-title"><h3>月の目標月収</h3></div>
+          <form id="goalForm" class="simple-form">
+            <label><span>目標金額</span><div class="money-input"><span>¥</span><input id="goalAmountInput" type="number" min="0" step="1000" inputmode="numeric" required></div></label>
+            <label><span>必要シフト数の計算に使うプリセット</span><select id="goalPresetSetting"></select></label>
+            <button class="solid-btn" type="submit">保存</button>
+          </form>
+        </section>
 
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">MONEY CALENDAR</p><h2>入出金カレンダー</h2></div></div>
-          <div class="calendar-weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
-          <div class="money-calendar-grid" id="moneyCalendarGrid"></div>
-        </div>
+        <section class="card settings-card">
+          <div class="section-title"><h3>毎月の固定費</h3><button class="text-button" id="addFixedBtn" type="button">＋ 追加</button></div>
+          <div class="total-line"><span>合計</span><b id="fixedTotalSetting">¥0</b></div>
+          <div id="fixedList" class="quiet-list"></div>
+        </section>
 
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">ACCOUNTS</p><h2>口座・財布・電子マネー</h2></div><button class="text-btn" id="addAccountBtn">＋ 口座</button></div>
-          <div id="accountList" class="list-stack"></div>
-          <div class="button-row"><button class="secondary-btn" id="transferBtn">口座間振替</button></div>
-        </div>
+        <section class="card settings-card">
+          <div class="section-title"><h3>バイト先</h3><button class="text-button" id="addWorkplaceBtn" type="button">＋ 追加</button></div>
+          <div id="workplaceList" class="quiet-list"></div>
+        </section>
 
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">CREDIT CARD</p><h2>クレジットカード</h2></div><button class="text-btn" id="addCardBtn">＋ カード</button></div>
-          <div id="cardList" class="list-stack"></div>
-        </div>
+        <section class="card settings-card">
+          <div class="section-title"><h3>シフトプリセット</h3><button class="text-button" id="addPresetBtn" type="button">＋ 追加</button></div>
+          <div id="presetList" class="quiet-list"></div>
+        </section>
 
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">SAVINGS GOALS</p><h2>貯金目標</h2></div><button class="text-btn" id="addSavingGoalBtn">＋ 目標</button></div>
-          <div id="savingGoalList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">CATEGORY BUDGET</p><h2>カテゴリ別予算</h2></div><button class="text-btn" id="openBudgetModal">＋ 予算</button></div>
-          <div id="categoryBudgetList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">SUBSCRIPTIONS</p><h2>固定費・サブスク</h2></div><button class="text-btn" id="openFixedModal">＋ 登録</button></div>
-          <div id="subscriptionSummary" class="mini-inline"></div>
-          <div id="fixedCostList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">TRANSACTIONS</p><h2>収支履歴</h2></div></div>
-          <div id="transactionList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">FUTURE BALANCE</p><h2>残高予測</h2></div><select id="forecastHorizon" class="small-select"><option value="30">30日</option><option value="60">60日</option><option value="90">90日</option></select></div>
-          <div id="futureBalanceChart" class="spark-bars"></div>
-          <div id="futureBalance" class="timeline"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">PAYSLIP CHECK</p><h2>給与明細</h2></div><button class="text-btn" id="openPayslipModal">＋ 給与明細</button></div>
-          <div id="payslipList" class="list-stack"></div>
-        </div>
-      </section>
-
-      <section class="page" id="page-analysis" data-page="analysis">
-        <div class="section-head page-head"><div><p class="eyebrow">ANALYTICS</p><h2>分析</h2></div></div>
-        <div class="card"><div class="section-head"><div><p class="eyebrow">6 MONTHS</p><h2>給与推移</h2></div></div><div id="salaryChart" class="bar-chart"></div></div>
-        <div class="card"><div class="section-head"><div><p class="eyebrow">6 MONTHS</p><h2>勤務時間</h2></div></div><div id="hoursChart" class="bar-chart"></div></div>
-        <div class="card"><div class="section-head"><div><p class="eyebrow">6 MONTHS</p><h2>支出推移</h2></div></div><div id="spendingChart" class="bar-chart"></div></div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">WORKPLACE</p><h2>勤務先別分析</h2></div></div>
-          <div id="workplaceAnalysis" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">YEAR</p><h2>年間収入</h2></div></div>
-          <div class="income-duo compact"><div><span>今年の予定</span><b id="annualIncome">¥0</b></div><div><span>年末予測</span><b id="annualForecast">¥0</b></div></div>
-          <div id="incomeWarnings" class="alert-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">REPORT</p><h2>月間レポート</h2></div></div>
-          <div id="monthlyReport" class="report-grid"></div>
-        </div>
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">REPORT</p><h2>年間レポート</h2></div></div>
-          <div id="annualReport" class="report-grid"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">PURCHASE</p><h2>買い物シミュレーター</h2></div></div>
-          <div class="field-grid two">
-            <label><span>欲しいもの</span><input type="text" id="purchaseName" placeholder="例：スマホ" /></label>
-            <label><span>金額</span><input type="number" id="purchasePrice" min="0" step="1" placeholder="250000" /></label>
+        <details class="data-details">
+          <summary>データ管理</summary>
+          <div class="data-actions">
+            <button class="outline-btn" id="exportBtn" type="button">バックアップを書き出す</button>
+            <label class="outline-btn file-label">バックアップを読み込む<input id="importInput" type="file" accept="application/json" hidden></label>
+            <button class="danger-link" id="resetBtn" type="button">すべてのデータを削除</button>
           </div>
-          <button class="primary-btn full" id="simulatePurchaseBtn">判定する</button>
-          <div id="purchaseResult" class="result-panel"></div>
-        </div>
-      </section>
-
-      <section class="page" id="page-settings" data-page="settings">
-        <div class="section-head page-head"><div><p class="eyebrow">SETTINGS</p><h2>設定</h2></div></div>
-
-        <form class="card form-card" id="moneySettingsForm">
-          <div class="field-grid two">
-            <label><span>次回給与目標（円）</span><input type="number" id="salaryGoal" min="0" step="1000" inputmode="numeric" /></label>
-            <label><span>最低残高ライン（円）</span><input type="number" id="balanceFloor" min="0" step="1000" inputmode="numeric" /></label>
-          </div>
-          <label><span>目標計算に使うプリセット</span><select id="goalPreset"></select></label>
-          <label><span>年間収入アラート（カンマ区切り）</span><input type="text" id="incomeWarningLines" placeholder="1000000,1200000" /></label>
-          <button class="primary-btn full" type="submit">お金の設定を保存</button>
-        </form>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">APPEARANCE</p><h2>表示</h2></div></div>
-          <div class="field-grid two">
-            <label><span>テーマ</span><select id="themeSelect"><option value="system">端末に合わせる</option><option value="light">ライト</option><option value="dark">ダーク</option></select></label>
-            <label><span>アクセント</span><select id="accentSelect"><option value="blue">ブルー</option><option value="green">グリーン</option><option value="purple">パープル</option><option value="orange">オレンジ</option></select></label>
-          </div>
-          <div class="divider"></div>
-          <div class="section-head"><div><h3>ホームカード</h3><p class="muted small">表示/非表示と並び順を変更</p></div></div>
-          <div id="dashboardCardSettings" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">WORKPLACES</p><h2>勤務先・給与サイクル</h2></div><button class="text-btn" id="openWorkplaceModal">＋ 勤務先</button></div>
-          <div id="workplaceList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">WAGE HISTORY</p><h2>時給変更履歴</h2></div><button class="text-btn" id="openWageModal">＋ 時給</button></div>
-          <div id="wageHistoryList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">PRESETS</p><h2>シフトプリセット</h2></div><button class="text-btn" id="openPresetModal">＋ 作成</button></div>
-          <div id="presetList" class="list-stack"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-head"><div><p class="eyebrow">DATA</p><h2>バックアップ</h2></div></div>
-          <p class="muted small">毎日1回、端末内に自動バックアップします。JSONは完全バックアップ、CSVは確認用です。</p>
-          <div class="mini-inline"><span>最終自動バックアップ</span><b id="backupTimestamp">—</b></div>
-          <div class="button-row">
-            <button class="secondary-btn" id="exportJsonBtn">JSON</button>
-            <button class="secondary-btn" id="exportCsvBtn">CSV</button>
-            <label class="secondary-btn file-label">JSON読込<input type="file" id="importInput" accept="application/json" hidden /></label>
-            <button class="secondary-btn" id="restoreAutoBackupBtn">自動バックアップ復元</button>
-            <button class="danger-ghost-btn" id="resetBtn">全データ削除</button>
-          </div>
-        </div>
-
-        <div class="card info-card">
-          <p class="eyebrow">LIMITS</p><h2>PWA版について</h2>
-          <p class="muted small">レシート写真は添付できますが、OCR自動読み取りはこの静的PWA版では未搭載です。自動バックアップは端末内保存です。iCloudへの自動保存やホーム画面の本物のiOSウィジェットはネイティブアプリ化が必要です。</p>
-        </div>
-
-        <div class="card install-card" id="iosInstallCard" hidden><p class="eyebrow">IPHONE</p><h2>ホーム画面に追加</h2><p class="muted small">Safariの共有ボタン →「ホーム画面に追加」でアプリのように起動できます。</p></div>
+          <small>データはこの端末のブラウザ内に保存されます。</small>
+        </details>
       </section>
     </main>
 
-    <nav class="bottom-nav" aria-label="メインナビゲーション">
-      <button class="nav-btn active" data-nav="dashboard"><span>⌂</span><small>ホーム</small></button>
-      <button class="nav-btn" data-nav="shifts"><span>▦</span><small>シフト</small></button>
-      <button class="nav-btn" data-nav="budget"><span>¥</span><small>家計簿</small></button>
-      <button class="nav-btn" data-nav="analysis"><span>▥</span><small>分析</small></button>
-      <button class="nav-btn" data-nav="settings"><span>⚙</span><small>設定</small></button>
+    <nav class="bottom-nav" aria-label="メインメニュー">
+      <button type="button" class="active" data-nav="home"><span>⌂</span>ホーム</button>
+      <button type="button" data-nav="shifts"><span>□</span>シフト</button>
+      <button type="button" data-nav="settings"><span>○</span>設定</button>
     </nav>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog id="dayDialog" class="dialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><div><p class="subtle">SHIFT</p><h3 id="dayDialogTitle">—</h3></div><button class="close-btn" type="button" data-close>×</button></div>
+      <div id="dayShiftList" class="quiet-list"></div>
+    </form>
+  </dialog>
 
-  <dialog id="workplaceModal" class="modal"><form method="dialog" class="modal-card" id="workplaceForm">
-    <div class="modal-head"><div><p class="eyebrow">WORKPLACE</p><h2 id="workplaceModalTitle">勤務先を追加</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="workplaceId" />
-    <label><span>勤務先名</span><input type="text" id="workplaceName" maxlength="40" required /></label>
-    <div class="field-grid two"><label><span>色</span><input type="color" id="workplaceColor" value="#3b82f6" /></label><label><span>給与端数処理</span><select id="roundingMode"><option value="none">1分単位</option><option value="floor">切り捨て</option><option value="nearest">四捨五入</option><option value="ceil">切り上げ</option></select></label></div>
-    <div class="field-grid two"><label><span>端数単位</span><select id="roundingMinutes"><option value="1">1分</option><option value="5">5分</option><option value="10">10分</option><option value="15">15分</option><option value="30">30分</option></select></label><label><span>1勤務手当</span><input type="number" id="shiftAllowance" min="0" step="1" /></label></div>
-    <div class="field-grid two"><label><span>締め日</span><select id="closingDay"></select></label><label><span>給料日</span><select id="payDay"></select></label></div>
-    <label><span>支払いタイミング</span><select id="payLag"><option value="0">締め月の給料日</option><option value="1">翌月の給料日</option><option value="2">翌々月の給料日</option></select></label>
-    <label><span>給料日が土日の場合</span><select id="weekendRule"><option value="none">変更しない</option><option value="previous">前の平日</option><option value="next">次の平日</option></select></label>
-    <div class="divider"></div>
-    <p class="form-subtitle">休憩・交通費・手当</p>
-    <div class="field-grid two"><label><span>6時間以上の自動休憩</span><input type="number" id="autoBreak6" min="0" step="5" /></label><label><span>8時間以上の自動休憩</span><input type="number" id="autoBreak8" min="0" step="5" /></label></div>
-    <label><span>交通費方式</span><select id="transportMode"><option value="per_shift">1勤務ごと</option><option value="per_km">距離×単価</option><option value="none">なし</option></select></label>
-    <div class="field-grid two"><label><span>交通費 / 1勤務</span><input type="number" id="transportPerShift" min="0" step="1" /></label><label><span>1km単価</span><input type="number" id="transportPerKm" min="0" step="1" /></label></div>
-    <div class="field-grid two"><label><span>交通費月上限</span><input type="number" id="transportMonthlyCap" min="0" step="1" /></label><label><span>土日手当 / 日</span><input type="number" id="weekendAllowance" min="0" step="1" /></label></div>
-    <div class="field-grid two"><label><span>残業判定（時間超）</span><input type="number" id="overtimeAfterHours" min="0" step="0.5" /></label><label><span>残業倍率</span><input type="number" id="overtimeRate" min="1" step="0.01" /></label></div>
-    <div class="field-grid two"><label><span>深夜倍率</span><input type="number" id="nightRate" min="1" step="0.01" /></label><label><span>早朝倍率</span><input type="number" id="earlyRate" min="1" step="0.01" /></label></div>
-    <div class="field-grid two"><label><span>深夜開始</span><input type="time" id="nightStart" /></label><label><span>深夜終了</span><input type="time" id="nightEnd" /></label></div>
-    <div class="field-grid two"><label><span>早朝開始</span><input type="time" id="earlyStart" /></label><label><span>早朝終了</span><input type="time" id="earlyEnd" /></label></div>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
+  <dialog id="workplaceDialog" class="dialog">
+    <form class="dialog-card" id="workplaceForm">
+      <div class="dialog-head"><h3 id="workplaceDialogTitle">バイト先を追加</h3><button class="close-btn" type="button" data-close>×</button></div>
+      <input type="hidden" id="workplaceId">
+      <label><span>バイト先の名前</span><input id="workplaceName" maxlength="40" required placeholder="例：ぼってんの湯"></label>
+      <label><span>時給</span><div class="money-input"><span>¥</span><input id="workplaceWage" type="number" min="0" step="1" inputmode="numeric" required></div></label>
+      <button class="solid-btn" type="submit">保存</button>
+    </form>
+  </dialog>
 
-  <dialog id="wageModal" class="modal"><form method="dialog" class="modal-card" id="wageForm">
-    <div class="modal-head"><div><p class="eyebrow">WAGE</p><h2 id="wageModalTitle">時給を追加</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="wageId" /><label><span>勤務先</span><select id="wageWorkplace" required></select></label>
-    <div class="field-grid two"><label><span>適用開始日</span><input type="date" id="wageEffectiveFrom" required /></label><label><span>時給（円）</span><input type="number" id="wageAmount" min="0" step="1" required /></label></div>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
+  <dialog id="presetDialog" class="dialog">
+    <form class="dialog-card" id="presetForm">
+      <div class="dialog-head"><h3 id="presetDialogTitle">プリセットを追加</h3><button class="close-btn" type="button" data-close>×</button></div>
+      <input type="hidden" id="presetId">
+      <label><span>バイト先</span><select id="presetWorkplace" required></select></label>
+      <label><span>名前</span><input id="presetName" maxlength="30" required placeholder="例：A班"></label>
+      <div class="two-col"><label><span>開始</span><input id="presetStart" type="time" required></label><label><span>終了</span><input id="presetEnd" type="time" required></label></div>
+      <label><span>休憩時間</span><div class="suffix-input"><input id="presetBreak" type="number" min="0" max="600" step="5" inputmode="numeric" value="0" required><span>分</span></div></label>
+      <button class="solid-btn" type="submit">保存</button>
+    </form>
+  </dialog>
 
-  <dialog id="presetModal" class="modal"><form method="dialog" class="modal-card" id="presetForm">
-    <div class="modal-head"><div><p class="eyebrow">PRESET</p><h2 id="presetModalTitle">プリセット作成</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="presetId" /><label><span>勤務先</span><select id="presetWorkplace" required></select></label>
-    <label><span>プリセット名</span><input type="text" id="presetName" maxlength="30" required placeholder="例：A班" /></label>
-    <div class="field-grid two"><label><span>開始</span><input type="time" id="presetStart" required /></label><label><span>終了</span><input type="time" id="presetEnd" required /></label></div>
-    <div class="field-grid two"><label><span>休憩（分）</span><input type="number" id="presetBreak" min="0" step="5" value="0" /></label><label class="toggle-row compact-toggle"><input type="checkbox" id="presetAutoBreak" /><span><b>自動休憩</b><small>勤務先ルールを使用</small></span></label></div>
-    <div class="field-grid two"><label><span>交通費上書き</span><input type="number" id="presetTransport" min="0" step="1" placeholder="空欄＝勤務先設定" /></label><label><span>プリセット色</span><input type="color" id="presetColor" value="#3b82f6" /></label></div>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
+  <dialog id="fixedDialog" class="dialog">
+    <form class="dialog-card" id="fixedForm">
+      <div class="dialog-head"><h3 id="fixedDialogTitle">固定費を追加</h3><button class="close-btn" type="button" data-close>×</button></div>
+      <input type="hidden" id="fixedId">
+      <label><span>名前</span><input id="fixedName" maxlength="40" required placeholder="例：携帯料金"></label>
+      <label><span>毎月の金額</span><div class="money-input"><span>¥</span><input id="fixedAmount" type="number" min="0" step="1" inputmode="numeric" required></div></label>
+      <button class="solid-btn" type="submit">保存</button>
+    </form>
+  </dialog>
 
-  <dialog id="shiftModal" class="modal"><form method="dialog" class="modal-card" id="shiftForm">
-    <div class="modal-head"><div><p class="eyebrow">SHIFT</p><h2 id="shiftModalTitle">シフト追加</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="shiftId" /><label><span>勤務先</span><select id="shiftWorkplace" required></select></label>
-    <label><span>日付</span><input type="date" id="shiftDate" required /></label><label><span>プリセット</span><select id="shiftPreset"></select></label>
-    <div class="field-grid two"><label><span>開始</span><input type="time" id="shiftStart" required /></label><label><span>終了</span><input type="time" id="shiftEnd" required /></label></div>
-    <div class="field-grid two"><label><span>休憩（分）</span><input type="number" id="shiftBreak" min="0" step="5" value="0" /></label><label class="toggle-row compact-toggle"><input type="checkbox" id="shiftAutoBreak" /><span><b>自動休憩</b><small>勤務先ルールを使用</small></span></label></div>
-    <div class="field-grid two"><label><span>時給上書き</span><input type="number" id="shiftWageOverride" min="0" step="1" placeholder="空欄＝履歴から" /></label><label><span>交通費上書き</span><input type="number" id="shiftTransportOverride" min="0" step="1" placeholder="空欄＝設定から" /></label></div>
-    <label><span>通勤距離（km・距離制のみ）</span><input type="number" id="shiftDistanceKm" min="0" step="0.1" /></label>
-    <label><span>メモ</span><input type="text" id="shiftNote" maxlength="80" placeholder="任意" /></label>
-    <div class="earn-preview"><span>このシフトの給与見込み</span><strong id="shiftPayPreview">¥0</strong></div>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
+  <dialog id="shiftDialog" class="dialog">
+    <form class="dialog-card" id="shiftForm">
+      <div class="dialog-head"><h3>シフトを編集</h3><button class="close-btn" type="button" data-close>×</button></div>
+      <input type="hidden" id="shiftId">
+      <label><span>日付</span><input id="shiftDate" type="date" required></label>
+      <label><span>バイト先</span><select id="shiftWorkplace" required></select></label>
+      <div class="two-col"><label><span>開始</span><input id="shiftStart" type="time" required></label><label><span>終了</span><input id="shiftEnd" type="time" required></label></div>
+      <label><span>休憩時間</span><div class="suffix-input"><input id="shiftBreak" type="number" min="0" max="600" step="5" inputmode="numeric" required><span>分</span></div></label>
+      <button class="solid-btn" type="submit">保存</button>
+    </form>
+  </dialog>
 
-  <dialog id="bulkShiftModal" class="modal bulk-shift-modal"><form method="dialog" class="modal-card" id="bulkShiftForm">
-    <div class="modal-head"><div><p class="eyebrow">BULK SHIFT</p><h2>カレンダーから一括追加</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <label><span>勤務先</span><select id="bulkWorkplace" required></select></label><label><span>プリセット</span><select id="bulkPreset" required></select></label>
-    <div class="bulk-calendar-toolbar"><button class="ghost-btn square" id="bulkPrevMonth" type="button">‹</button><strong id="bulkMonthTitle">—</strong><button class="ghost-btn square" id="bulkNextMonth" type="button">›</button></div>
-    <div class="bulk-calendar-card"><div class="bulk-calendar-weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div><div class="bulk-calendar-grid" id="bulkCalendarGrid"></div></div>
-    <div class="bulk-selection-summary"><div><span>選択中</span><strong id="bulkSelectedCount">0日</strong></div><button class="text-btn" id="bulkClearDates" type="button">すべて解除</button></div>
-    <p class="muted small" id="bulkSelectionHint">追加したい日付をタップしてください。同じ日に複数シフトも登録できます。</p>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" id="bulkSubmitBtn" value="default" disabled>選択した日に追加</button></div>
-  </form></dialog>
-
-  <dialog id="dayShiftModal" class="modal"><div class="modal-card">
-    <div class="modal-head"><div><p class="eyebrow">DAY</p><h2 id="dayShiftTitle">シフト</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <div id="dayShiftSummary" class="mini-inline"></div><div id="dayShiftList" class="list-stack"></div>
-    <button class="primary-btn full" id="dayAddShiftBtn">＋ この日に追加</button>
-  </div></dialog>
-
-  <dialog id="transactionModal" class="modal"><form method="dialog" class="modal-card" id="transactionForm">
-    <div class="modal-head"><div><p class="eyebrow">MONEY</p><h2 id="transactionModalTitle">支出を追加</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="transactionId" /><input type="hidden" id="transactionType" value="expense" />
-    <label><span>日付</span><input type="date" id="transactionDate" required /></label><label><span>内容</span><input type="text" id="transactionName" maxlength="50" required /></label>
-    <div class="field-grid two"><label><span>金額</span><input type="number" id="transactionAmount" min="0" step="1" required /></label><label><span>カテゴリ</span><input type="text" id="transactionCategory" list="categorySuggestions" maxlength="30" /></label></div>
-    <div class="field-grid two"><label><span>口座</span><select id="transactionAccount"></select></label><label><span>クレジットカード</span><select id="transactionCard"><option value="">使わない</option></select></label></div>
-    <label><span>メモ</span><input type="text" id="transactionNote" maxlength="80" /></label>
-    <label><span>レシート写真（任意）</span><input type="file" id="receiptImage" accept="image/*" capture="environment" /></label><div id="receiptPreview" class="receipt-preview"></div>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
-
-  <dialog id="fixedModal" class="modal"><form method="dialog" class="modal-card" id="fixedForm">
-    <div class="modal-head"><div><p class="eyebrow">FIXED COST</p><h2 id="fixedModalTitle">固定費を登録</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="fixedId" /><label><span>名前</span><input type="text" id="fixedName" maxlength="40" required placeholder="例：Apple Music" /></label>
-    <div class="field-grid two"><label><span>金額</span><input type="number" id="fixedAmount" min="0" step="1" required /></label><label><span>価格適用日</span><input type="date" id="fixedPriceFrom" /></label></div>
-    <div class="field-grid two"><label><span>カテゴリ</span><input type="text" id="fixedCategory" list="categorySuggestions" maxlength="30" value="サブスク" /></label><label class="toggle-row compact-toggle"><input type="checkbox" id="fixedSubscription" checked /><span><b>サブスク</b><small>年間換算に含む</small></span></label></div>
-    <label><span>周期</span><select id="fixedRecurrence"><option value="monthly">毎月</option><option value="yearly">毎年</option></select></label>
-    <div class="field-grid two"><label id="fixedMonthWrap" hidden><span>月</span><select id="fixedMonth"></select></label><label><span>支払日</span><select id="fixedDay"></select></label></div>
-    <div class="field-grid two"><label><span>支払口座</span><select id="fixedAccount"></select></label><label><span>カード</span><select id="fixedCard"><option value="">使わない</option></select></label></div>
-    <label class="toggle-row"><input type="checkbox" id="fixedEnabled" checked /><span><b>有効</b><small>OFFなら将来予測に含めません</small></span></label>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
-
-  <dialog id="budgetModal" class="modal"><form method="dialog" class="modal-card" id="budgetForm">
-    <div class="modal-head"><div><p class="eyebrow">BUDGET</p><h2>カテゴリ予算</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <label><span>カテゴリ</span><input type="text" id="budgetCategory" list="categorySuggestions" maxlength="30" required /></label><label><span>月予算（円）</span><input type="number" id="budgetAmount" min="0" step="100" required /></label>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
-
-  <dialog id="payslipModal" class="modal"><form method="dialog" class="modal-card" id="payslipForm">
-    <div class="modal-head"><div><p class="eyebrow">PAYSLIP</p><h2 id="payslipModalTitle">給与明細を登録</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input type="hidden" id="payslipId" /><label><span>勤務先</span><select id="payslipWorkplace" required></select></label>
-    <label><span>給料日</span><input type="date" id="payslipPayDate" required /></label>
-    <div class="field-grid two"><label><span>総支給</span><input type="number" id="payslipGross" min="0" step="1" /></label><label><span>手取り</span><input type="number" id="payslipNet" min="0" step="1" required /></label></div>
-    <div class="field-grid two"><label><span>所得税</span><input type="number" id="payslipTax" min="0" step="1" /></label><label><span>雇用・社会保険</span><input type="number" id="payslipInsurance" min="0" step="1" /></label></div>
-    <label><span>その他控除</span><input type="number" id="payslipOther" min="0" step="1" /></label><label><span>メモ</span><input type="text" id="payslipNote" maxlength="80" /></label>
-    <div class="modal-actions"><button class="secondary-btn" type="button" data-close-dialog>キャンセル</button><button class="primary-btn" value="default">保存</button></div>
-  </form></dialog>
-
-  <dialog id="searchModal" class="modal"><div class="modal-card">
-    <div class="modal-head"><div><p class="eyebrow">SEARCH</p><h2>検索</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <input class="search-input" id="searchInput" type="search" placeholder="シフト・支出・給与明細・サブスクを検索" />
-    <div id="searchResults" class="list-stack"></div>
-  </div></dialog>
-
-  <dialog id="suggestionModal" class="modal"><div class="modal-card">
-    <div class="modal-head"><div><p class="eyebrow">SHIFT PLAN</p><h2>目標達成の候補日</h2></div><button class="icon-btn close-btn" type="button" data-close-dialog>×</button></div>
-    <div id="suggestionSummary" class="result-panel"></div><div id="suggestionDates" class="chip-grid"></div>
-    <button class="primary-btn full" id="addSuggestedShiftsBtn">候補日をまとめて追加</button>
-  </div></dialog>
-
-  <datalist id="categorySuggestions"><option value="食費"></option><option value="交通費"></option><option value="ガソリン"></option><option value="日用品"></option><option value="娯楽"></option><option value="サブスク"></option><option value="通信費"></option><option value="家賃"></option><option value="給与"></option><option value="臨時収入"></option><option value="その他"></option></datalist>
-  <script src="./app.js?v=3.0.0" defer></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js?v=4.0.0"></script>
 </body>
 </html>
