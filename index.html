@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=4.3.0">
+  <link rel="stylesheet" href="./styles.css?v=4.4.0">
 </head>
 <body>
   <div class="app">
@@ -38,9 +38,11 @@
             <span>今月の月収</span>
             <strong id="plannedIncome">¥0</strong>
             <small>固定費差引後 <b id="plannedAfterFixed">¥0</b></small>
+            <small class="month-compare" id="monthComparison">前月比 —</small>
             <div class="income-breakdown" id="plannedIncomeBreakdown"></div>
           </div>
           <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div>
+          <div class="hours-line"><span>今月の勤務時間</span><b>現在 <em id="currentHoursHome">0時間</em> <i>/</i> 予定 <em id="plannedHoursHome">0時間</em></b></div>
         </section>
 
 
@@ -56,10 +58,7 @@
             </div>
           </div>
           <div class="progress" aria-hidden="true"><i id="goalProgress"></i></div>
-          <div class="goal-foot">
-            <select id="goalPresetHome" aria-label="目標計算に使うプリセット"></select>
-            <span id="goalShiftNeed">プリセットを設定してください</span>
-          </div>
+          <div class="goal-needs" id="goalPresetNeeds"></div>
         </section>
 
         <section class="card">
@@ -76,7 +75,7 @@
           </div>
         </div>
 
-        <section class="card preset-panel">
+        <section class="card preset-panel" id="presetPanel">
           <div class="preset-top">
             <span id="addModeText">追加するプリセットを選択</span>
             <button class="text-button" id="clearPresetSelection" type="button" hidden>選択解除</button>
@@ -107,7 +106,6 @@
           <div class="section-title"><h3>月の目標月収</h3></div>
           <form id="goalForm" class="simple-form">
             <label><span>目標金額</span><div class="money-input"><span>¥</span><input id="goalAmountInput" type="number" min="0" step="1000" inputmode="numeric" required></div></label>
-            <label><span>必要シフト数の計算に使うプリセット</span><select id="goalPresetSetting"></select></label>
             <button class="solid-btn" type="submit">保存</button>
           </form>
         </section>
@@ -204,6 +202,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=4.3.0"></script>
+  <script src="./app.js?v=4.4.0"></script>
 </body>
 </html>

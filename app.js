@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4';
-const APP_VERSION='4.3';
+const APP_VERSION='4.4';
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
 const V1='shiftwallet.v1';
@@ -21,14 +21,20 @@ function minutesBetween(start,end){if(!start||!end)return 0;const [sh,sm]=start.
 function shiftEndDateTime(s){const d=parseDate(s.date);const [sh,sm]=String(s.start||'00:00').split(':').map(Number),[eh,em]=String(s.end||'00:00').split(':').map(Number);const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh||0,em||0,0,0);if((eh||0)*60+(em||0)<=((sh||0)*60+(sm||0)))end.setDate(end.getDate()+1);return end}
 function isShiftFinished(s,ref=new Date()){return shiftEndDateTime(s).getTime()<=ref.getTime()}
 function hoursText(mins){const h=Math.max(0,mins)/60;return `${(Math.round(h*10)/10).toLocaleString('ja-JP')}時間`}
+const SHIFT_COLORS=['#6f7a68','#8a6f5b','#69758a','#8c706c','#7d775b','#756b83','#5f7976','#8a765d'];
+const WORK_COLORS=['#6b7565','#806958','#657086','#816b67','#736f57','#6e667a','#597370','#806e59'];
+function workplaceColor(id){const i=Math.max(0,state.workplaces.findIndex(w=>w.id===id));return WORK_COLORS[i%WORK_COLORS.length]}
+function presetColor(p){if(!p)return '#77736b';const wi=Math.max(0,state.workplaces.findIndex(w=>w.id===p.workplaceId)),same=state.presets.filter(x=>x.workplaceId===p.workplaceId),pi=Math.max(0,same.findIndex(x=>x.id===p.id));return SHIFT_COLORS[(wi*3+pi)%SHIFT_COLORS.length]}
+function shiftColor(s){const p=preset(s.presetId);return p?presetColor(p):workplaceColor(s.workplaceId)}
+function shiftMarkLabel(s){const p=preset(s.presetId),raw=(p?.name||workplace(s.workplaceId)?.name||'勤').replace(/\s+/g,'');return esc(raw.slice(0,2))}
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.3,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.4,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.3,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.4,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
@@ -48,7 +54,7 @@ function migrateV3(v){
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
   const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.3,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.4,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
@@ -92,11 +98,16 @@ function payrollCycleForDate(w,ref=new Date()){
   const payDate=dayInMonth(pm.getFullYear(),pm.getMonth(),w.payday);
   return {start,end,payDate};
 }
+function previousPayrollCycle(w,cycle){
+  const end=addDays(cycle.start,-1),m=new Date(end.getFullYear(),end.getMonth()-1,1,12),prevClose=dayInMonth(m.getFullYear(),m.getMonth(),w.closingDay);
+  return {start:addDays(prevClose,1),end};
+}
 function workplaceIncomeSummary(w,ref=new Date()){
   const cycle=payrollCycleForDate(w,ref),start=dateKey(cycle.start),end=dateKey(cycle.end),today=dateKey(ref);
   const shifts=state.shifts.filter(s=>s.workplaceId===w.id&&s.date>=start&&s.date<=end);
   const currentShifts=shifts.filter(s=>isShiftFinished(s,ref));
-  return {...cycle,currentPay:sumPay(currentShifts),plannedPay:sumPay(shifts),currentEnd:parseDate(today),currentCount:currentShifts.length,plannedCount:shifts.length};
+  const previous=previousPayrollCycle(w,cycle),ps=dateKey(previous.start),pe=dateKey(previous.end),previousShifts=state.shifts.filter(s=>s.workplaceId===w.id&&s.date>=ps&&s.date<=pe);
+  return {...cycle,currentPay:sumPay(currentShifts),plannedPay:sumPay(shifts),currentMinutes:currentShifts.reduce((a,s)=>a+calcShift(s).minutes,0),plannedMinutes:shifts.reduce((a,s)=>a+calcShift(s).minutes,0),previousPay:sumPay(previousShifts),previousCount:previousShifts.length,currentEnd:parseDate(today),currentCount:currentShifts.length,plannedCount:shifts.length};
 }
 function shortDate(d){return `${d.getMonth()+1}/${d.getDate()}`}
 function payDateLabel(d){return `${d.getMonth()+1}/${d.getDate()}`}
@@ -110,49 +121,53 @@ function renderHome(){
   const now=new Date(),today=todayKey(),fixed=fixedTotal();
   const incomes=state.workplaces.map(w=>({w,s:workplaceIncomeSummary(w,now)}));
   const cur=incomes.reduce((a,x)=>a+x.s.currentPay,0),planned=incomes.reduce((a,x)=>a+x.s.plannedPay,0);
+  const currentMinutes=incomes.reduce((a,x)=>a+x.s.currentMinutes,0),plannedMinutes=incomes.reduce((a,x)=>a+x.s.plannedMinutes,0);
+  const previousPay=incomes.reduce((a,x)=>a+x.s.previousPay,0),hasPrevious=incomes.some(x=>x.s.previousCount>0),diff=planned-previousPay;
   $('currentMonthLabel').textContent=monthLabel(now);
   $('currentIncome').textContent=yen(cur);$('plannedIncome').textContent=yen(planned);
   $('currentAfterFixed').textContent=yen(cur-fixed);$('plannedAfterFixed').textContent=yen(planned-fixed);$('fixedTotalHome').textContent=yen(fixed);
-  $('currentIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.currentEnd)}</small></div><strong>${yen(s.currentPay)}</strong></div>`).join('');
-  $('plannedIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.end)} · ${payDateLabel(s.payDate)}支給</small></div><strong>${yen(s.plannedPay)}</strong></div>`).join('');
+  $('currentHoursHome').textContent=hoursText(currentMinutes);$('plannedHoursHome').textContent=hoursText(plannedMinutes);
+  $('monthComparison').textContent=hasPrevious?`前月比 ${diff>0?'+':diff<0?'−':'±'}${yen(Math.abs(diff))}`:'前月比 —';
+  $('currentIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b><i class="color-swatch" style="--swatch:${workplaceColor(w.id)}"></i>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.currentEnd)}</small></div><strong>${yen(s.currentPay)}</strong></div>`).join('');
+  $('plannedIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b><i class="color-swatch" style="--swatch:${workplaceColor(w.id)}"></i>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.end)} · ${payDateLabel(s.payDate)}支給</small></div><strong>${yen(s.plannedPay)}</strong></div>`).join('');
   const goal=num(state.settings.monthlyGoal),remaining=Math.max(0,goal-planned),pct=goal?Math.min(100,planned/goal*100):0;
   $('goalAmountHome').textContent=yen(goal);$('goalRemainingHome').textContent=remaining?yen(remaining):'達成';$('goalProgress').style.width=`${pct}%`;
-  const gp=preset(state.settings.goalPresetId),cp=calcPreset(gp),need=remaining<=0?0:(cp.pay?Math.ceil(remaining/cp.pay):null);
-  $('goalShiftNeed').textContent=remaining<=0?'目標に到達しています':need===null?'時給・プリセットを設定してください':`あと ${need}回（${hoursText(need*cp.minutes)}）`;
-  const future=state.shifts.filter(s=>s.date>=today).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).slice(0,3);
-  $('nextShift').innerHTML=future.length?future.map(s=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(formatShiftLine(s))}</b><small>${esc(s.date.replaceAll('-','/'))}　${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分</small></div><div class="quiet-side"><b>${yen(calcShift(s).pay)}</b></div></div>`).join(''):'<div class="empty">予定はありません</div>';
+  $('goalPresetNeeds').innerHTML=remaining<=0?'<div class="goal-done">目標に到達しています</div>':state.presets.length?state.presets.map(p=>{const cp=calcPreset(p),need=cp.pay?Math.ceil(remaining/cp.pay):null;return `<div class="goal-need-row"><span><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)}</small></span><strong>${need===null?'—':`あと${need}回`}</strong></div>`}).join(''):'<div class="empty">プリセットを設定してください</div>';
+  const future=state.shifts.filter(s=>shiftEndDateTime(s)>=now).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).slice(0,3);
+  $('nextShift').innerHTML=future.length?future.map(s=>`<div class="quiet-row"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${shiftColor(s)}"></i>${esc(formatShiftLine(s))}</b><small>${esc(s.date.replaceAll('-','/'))}　${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分</small></div><div class="quiet-side"><b>${yen(calcShift(s).pay)}</b></div></div>`).join(''):'<div class="empty">予定はありません</div>';
 }
 function renderSelects(){
   const wpOpts=state.workplaces.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
   ['presetWorkplace','shiftWorkplace'].forEach(id=>{const el=$(id);const old=el.value;el.innerHTML=wpOpts;if(state.workplaces.some(w=>w.id===old))el.value=old});
-  const pOpts=state.presets.map(p=>`<option value="${p.id}">${esc(p.name)}｜${esc(workplace(p.workplaceId).name)}</option>`).join('');
-  ['goalPresetHome','goalPresetSetting'].forEach(id=>{const el=$(id);el.innerHTML=state.presets.length?pOpts:'<option value="">プリセットなし</option>';el.value=state.settings.goalPresetId||''});
 }
 function renderSettings(){
   $('goalAmountInput').value=num(state.settings.monthlyGoal);$('fixedTotalSetting').textContent=yen(fixedTotal());
   $('fixedList').innerHTML=state.fixedCosts.length?state.fixedCosts.map(f=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(f.name)}</b></div><div class="quiet-side"><b>${yen(f.amount)}</b><div class="row-actions"><button class="mini-link" data-edit-fixed="${f.id}">編集</button><button class="mini-link" data-delete-fixed="${f.id}">削除</button></div></div></div>`).join(''):'<div class="empty">固定費はまだありません</div>';
-  $('workplaceList').innerHTML=state.workplaces.map(w=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(w.name)}</b><small>時給 ${yen(w.hourlyWage)}　·　${num(w.closingDay)}日〆 / ${num(w.payday)}日給料</small></div><div class="quiet-side"><div class="row-actions"><button class="mini-link" data-edit-workplace="${w.id}">編集</button><button class="mini-link" data-delete-workplace="${w.id}">削除</button></div></div></div>`).join('');
-  $('presetList').innerHTML=state.presets.length?state.presets.map(p=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(p.name)} <span style="font-weight:400;color:var(--muted)">｜ ${esc(workplace(p.workplaceId).name)}</span></b><small>${esc(p.start)}–${esc(p.end)}　休憩${num(p.breakMinutes)}分　約${yen(calcPreset(p).pay)}</small></div><div class="quiet-side"><div class="row-actions"><button class="mini-link" data-edit-preset="${p.id}">編集</button><button class="mini-link" data-delete-preset="${p.id}">削除</button></div></div></div>`).join(''):'<div class="empty">プリセットを作成してください</div>';
+  $('workplaceList').innerHTML=state.workplaces.map(w=>`<div class="quiet-row"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${workplaceColor(w.id)}"></i>${esc(w.name)}</b><small>時給 ${yen(w.hourlyWage)}　·　${num(w.closingDay)}日〆 / ${num(w.payday)}日給料</small></div><div class="quiet-side"><div class="row-actions"><button class="mini-link" data-edit-workplace="${w.id}">編集</button><button class="mini-link" data-delete-workplace="${w.id}">削除</button></div></div></div>`).join('');
+  $('presetList').innerHTML=state.presets.length?state.presets.map(p=>`<div class="quiet-row"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${presetColor(p)}"></i>${esc(p.name)} <span style="font-weight:400;color:var(--muted)">｜ ${esc(workplace(p.workplaceId).name)}</span></b><small>${esc(p.start)}–${esc(p.end)}　休憩${num(p.breakMinutes)}分　約${yen(calcPreset(p).pay)}</small></div><div class="quiet-side"><div class="row-actions"><button class="mini-link" data-edit-preset="${p.id}">編集</button><button class="mini-link" data-delete-preset="${p.id}">削除</button></div></div></div>`).join(''):'<div class="empty">プリセットを作成してください</div>';
 }
 function renderShiftPage(){
   $('calendarMonthTitle').textContent=monthLabel(viewMonth);
   const presets=state.presets;
-  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" data-select-preset="${p.id}"><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">設定からプリセットを作成してください</div>';
-  const sp=preset(selectedPresetId);$('addModeText').textContent=sp?`「${sp.name}」を追加中`:'追加するプリセットを選択';$('clearPresetSelection').hidden=!sp;
+  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" style="--shift-color:${presetColor(p)}" data-select-preset="${p.id}"><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">設定からプリセットを作成してください</div>';
+  const sp=preset(selectedPresetId),panel=$('presetPanel');
+  $('addModeText').textContent=sp?`追加モード：${sp.name}（選択解除で編集）`:'プリセット選択で追加 / 日付タップで編集';$('clearPresetSelection').hidden=!sp;
+  panel.classList.toggle('adding',!!sp);panel.style.setProperty('--mode-color',sp?presetColor(sp):'var(--line-strong)');
   renderCalendar();
   const list=monthShifts(monthKey(viewMonth));$('shiftCount').textContent=`${list.length}件`;$('viewMonthIncome').textContent=yen(sumPay(list));
 }
 function renderCalendar(){
   const y=viewMonth.getFullYear(),m=viewMonth.getMonth(),first=new Date(y,m,1,12),start=new Date(y,m,1-first.getDay(),12),today=todayKey(),html=[];
   for(let i=0;i<42;i++){
-    const d=new Date(start);d.setDate(start.getDate()+i);const key=dateKey(d),inside=d.getMonth()===m,items=state.shifts.filter(s=>s.date===key),dots=items.slice(0,4).map(()=>'<i class="shift-dot"></i>').join(''),more=items.length>4?`<span class="shift-more">+${items.length-4}</span>`:'';
-    html.push(`<button type="button" class="day ${inside?'':'outside'} ${key===today?'today':''} ${selectedPresetId?'addable':''}" data-date="${key}"><span class="day-num">${d.getDate()}</span>${items.length?`<span class="day-dots">${dots}${more}</span>`:''}</button>`);
+    const d=new Date(start);d.setDate(start.getDate()+i);const key=dateKey(d),inside=d.getMonth()===m,items=state.shifts.filter(s=>s.date===key).sort((a,b)=>a.start.localeCompare(b.start));
+    const marks=items.slice(0,3).map(s=>`<span class="shift-mark" style="--shift-color:${shiftColor(s)}">${shiftMarkLabel(s)}</span>`).join(''),more=items.length>3?`<span class="shift-more">+${items.length-3}</span>`:'';
+    html.push(`<button type="button" class="day ${inside?'':'outside'} ${key===today?'today':''} ${selectedPresetId?'addable':''}" data-date="${key}"><span class="day-num">${d.getDate()}</span>${items.length?`<span class="day-marks">${marks}${more}</span>`:''}</button>`);
   }
   $('calendar').innerHTML=html.join('');
 }
 function openDay(date){
   const items=state.shifts.filter(s=>s.date===date).sort((a,b)=>a.start.localeCompare(b.start));$('dayDialogTitle').textContent=date.replaceAll('-','/');
-  $('dayShiftList').innerHTML=items.length?items.map(s=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(formatShiftLine(s))}</b><small>${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分</small></div><div class="quiet-side"><b>${yen(calcShift(s).pay)}</b><div class="row-actions"><button type="button" class="mini-link" data-edit-shift="${s.id}">編集</button><button type="button" class="mini-link" data-delete-shift="${s.id}">削除</button></div></div></div>`).join(''):'<div class="empty">この日のシフトはありません</div>';
+  $('dayShiftList').innerHTML=items.length?items.map(s=>`<div class="quiet-row shift-detail-row" style="--shift-color:${shiftColor(s)}"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${shiftColor(s)}"></i>${esc(formatShiftLine(s))}</b><small>${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分</small></div><div class="quiet-side"><b>${yen(calcShift(s).pay)}</b><div class="row-actions"><button type="button" class="mini-link" data-edit-shift="${s.id}">編集</button><button type="button" class="mini-link" data-delete-shift="${s.id}">削除</button></div></div></div>`).join(''):'<div class="empty">この日のシフトはありません</div>';
   openDialog('dayDialog');
 }
 function addPresetToDate(p,date){
@@ -186,15 +201,13 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 $('prevMonth').onclick=()=>{viewMonth=addMonths(viewMonth,-1);renderShiftPage()};$('nextMonth').onclick=()=>{viewMonth=addMonths(viewMonth,1);renderShiftPage()};
 $('clearPresetSelection').onclick=()=>{selectedPresetId='';renderShiftPage()};
 $('calendarPresetStrip').addEventListener('click',e=>{const b=e.target.closest('[data-select-preset]');if(!b)return;selectedPresetId=selectedPresetId===b.dataset.selectPreset?'':b.dataset.selectPreset;renderShiftPage()});
-$('calendar').addEventListener('click',e=>{const b=e.target.closest('[data-date]');if(!b)return;const p=preset(selectedPresetId);if(p)addPresetToDate(p,b.dataset.date);else openDay(b.dataset.date)});
-$('goalPresetHome').onchange=e=>{state.settings.goalPresetId=e.target.value;save()};
-$('goalPresetSetting').onchange=e=>{state.settings.goalPresetId=e.target.value;save()};
-$('goalForm').onsubmit=e=>{e.preventDefault();state.settings.monthlyGoal=Math.max(0,num($('goalAmountInput').value));state.settings.goalPresetId=$('goalPresetSetting').value;save();toast('目標を保存しました')};
+$('calendar').addEventListener('click',e=>{const b=e.target.closest('[data-date]');if(!b)return;const p=preset(selectedPresetId);if(p){if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}addPresetToDate(p,b.dataset.date)}else openDay(b.dataset.date)});
+$('goalForm').onsubmit=e=>{e.preventDefault();state.settings.monthlyGoal=Math.max(0,num($('goalAmountInput').value));save();toast('目標を保存しました')};
 $('addWorkplaceBtn').onclick=()=>openWorkplaceEditor();$('addPresetBtn').onclick=()=>openPresetEditor();$('addFixedBtn').onclick=()=>openFixedEditor();
 $('workplaceForm').onsubmit=e=>{e.preventDefault();const id=$('workplaceId').value||uid(),item={id,name:$('workplaceName').value.trim(),hourlyWage:Math.max(0,num($('workplaceWage').value)),closingDay:Math.min(31,Math.max(1,num($('workplaceClosingDay').value,10))),payday:Math.min(31,Math.max(1,num($('workplacePayday').value,25)))},i=state.workplaces.findIndex(x=>x.id===id);if(i>=0)state.workplaces[i]=item;else state.workplaces.push(item);save();closeDialogs();toast('保存しました')};
 $('presetForm').onsubmit=e=>{e.preventDefault();const id=$('presetId').value||uid(),item={id,workplaceId:$('presetWorkplace').value,name:$('presetName').value.trim(),start:$('presetStart').value,end:$('presetEnd').value,breakMinutes:Math.max(0,num($('presetBreak').value))},i=state.presets.findIndex(x=>x.id===id);if(i>=0)state.presets[i]=item;else state.presets.push(item);if(!state.settings.goalPresetId)state.settings.goalPresetId=id;save();closeDialogs();toast(`休憩${item.breakMinutes}分で保存しました`)};
 $('fixedForm').onsubmit=e=>{e.preventDefault();const id=$('fixedId').value||uid(),item={id,name:$('fixedName').value.trim(),amount:Math.max(0,num($('fixedAmount').value))},i=state.fixedCosts.findIndex(x=>x.id===id);if(i>=0)state.fixedCosts[i]=item;else state.fixedCosts.push(item);save();closeDialogs();toast('保存しました')};
-$('shiftForm').onsubmit=e=>{e.preventDefault();const s=state.shifts.find(x=>x.id===$('shiftId').value);if(!s)return;s.date=$('shiftDate').value;s.workplaceId=$('shiftWorkplace').value;s.start=$('shiftStart').value;s.end=$('shiftEnd').value;s.breakMinutes=Math.max(0,num($('shiftBreak').value));s.presetId='';save();closeDialogs();toast('シフトを更新しました')};
+$('shiftForm').onsubmit=e=>{e.preventDefault();const s=state.shifts.find(x=>x.id===$('shiftId').value);if(!s)return;s.date=$('shiftDate').value;const oldWorkplace=s.workplaceId;s.workplaceId=$('shiftWorkplace').value;s.start=$('shiftStart').value;s.end=$('shiftEnd').value;s.breakMinutes=Math.max(0,num($('shiftBreak').value));if(oldWorkplace!==s.workplaceId)s.presetId='';save();closeDialogs();toast('シフトを更新しました')};
 
 document.addEventListener('click',e=>{
   const q=a=>e.target.closest(`[${a}]`)?.getAttribute(a);
@@ -207,7 +220,7 @@ $('exportBtn').onclick=downloadBackup;
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.3.0').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.4.0').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();
