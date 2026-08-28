@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4';
-const APP_VERSION='4.2';
+const APP_VERSION='4.3';
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
 const V1='shiftwallet.v1';
@@ -18,15 +18,17 @@ function monthKey(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}`}
 function monthLabel(d){return `${d.getFullYear()}年${d.getMonth()+1}月`}
 function addMonths(d,n){return new Date(d.getFullYear(),d.getMonth()+n,1,12)}
 function minutesBetween(start,end){if(!start||!end)return 0;const [sh,sm]=start.split(':').map(Number),[eh,em]=end.split(':').map(Number);let a=sh*60+sm,b=eh*60+em;if(b<=a)b+=1440;return Math.max(0,b-a)}
+function shiftEndDateTime(s){const d=parseDate(s.date);const [sh,sm]=String(s.start||'00:00').split(':').map(Number),[eh,em]=String(s.end||'00:00').split(':').map(Number);const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),eh||0,em||0,0,0);if((eh||0)*60+(em||0)<=((sh||0)*60+(sm||0)))end.setDate(end.getDate()+1);return end}
+function isShiftFinished(s,ref=new Date()){return shiftEndDateTime(s).getTime()<=ref.getTime()}
 function hoursText(mins){const h=Math.max(0,mins)/60;return `${(Math.round(h*10)/10).toLocaleString('ja-JP')}時間`}
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.2,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.3,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.2,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.3,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
@@ -46,7 +48,7 @@ function migrateV3(v){
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
   const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.2,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.3,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
@@ -93,7 +95,7 @@ function payrollCycleForDate(w,ref=new Date()){
 function workplaceIncomeSummary(w,ref=new Date()){
   const cycle=payrollCycleForDate(w,ref),start=dateKey(cycle.start),end=dateKey(cycle.end),today=dateKey(ref);
   const shifts=state.shifts.filter(s=>s.workplaceId===w.id&&s.date>=start&&s.date<=end);
-  const currentShifts=shifts.filter(s=>s.date<=today);
+  const currentShifts=shifts.filter(s=>isShiftFinished(s,ref));
   return {...cycle,currentPay:sumPay(currentShifts),plannedPay:sumPay(shifts),currentEnd:parseDate(today),currentCount:currentShifts.length,plannedCount:shifts.length};
 }
 function shortDate(d){return `${d.getMonth()+1}/${d.getDate()}`}
@@ -205,15 +207,19 @@ $('exportBtn').onclick=downloadBackup;
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.2.0').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.3.0').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
-  const nowKey=todayKey();if(nowKey===lastRenderedDate)return;
-  const previousMonth=lastRenderedDate.slice(0,7),newMonth=nowKey.slice(0,7);
-  if(previousMonth!==newMonth&&monthKey(viewMonth)===previousMonth){const d=parseDate(nowKey);viewMonth=new Date(d.getFullYear(),d.getMonth(),1,12)}
-  lastRenderedDate=nowKey;renderAll();
+  const nowKey=todayKey();
+  if(nowKey!==lastRenderedDate){
+    const previousMonth=lastRenderedDate.slice(0,7),newMonth=nowKey.slice(0,7);
+    if(previousMonth!==newMonth&&monthKey(viewMonth)===previousMonth){const d=parseDate(nowKey);viewMonth=new Date(d.getFullYear(),d.getMonth(),1,12)}
+    lastRenderedDate=nowKey;renderAll();return;
+  }
+  // 同じ日でもシフト終了時刻を過ぎたら「現在の月収」を更新する
+  renderHome();
 }
 window.addEventListener('focus',refreshForDateChange);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshForDateChange()});
-setInterval(refreshForDateChange,60000);
+setInterval(()=>{if(!document.hidden)refreshForDateChange()},60000);
 renderAll();
