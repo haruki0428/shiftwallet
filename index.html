@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=4.1.0">
+  <link rel="stylesheet" href="./styles.css?v=4.2.0">
 </head>
 <body>
   <div class="app">
@@ -31,20 +31,18 @@
             <span>現在の月収</span>
             <strong id="currentIncome">¥0</strong>
             <small>固定費差引後 <b id="currentAfterFixed">¥0</b></small>
+            <div class="income-breakdown" id="currentIncomeBreakdown"></div>
           </div>
           <div class="summary-divider"></div>
           <div class="summary-block">
-            <span>今月の予定月収</span>
+            <span>今月の月収</span>
             <strong id="plannedIncome">¥0</strong>
             <small>固定費差引後 <b id="plannedAfterFixed">¥0</b></small>
+            <div class="income-breakdown" id="plannedIncomeBreakdown"></div>
           </div>
           <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div>
         </section>
 
-        <section class="card next-pay-card">
-          <div class="section-title"><h2>次回給与見込み</h2></div>
-          <div id="nextPayrollList" class="quiet-list"></div>
-        </section>
 
         <section class="card goal-card">
           <div class="row between align-start">
@@ -206,6 +204,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=4.1.0"></script>
+  <script src="./app.js?v=4.2.0"></script>
 </body>
 </html>

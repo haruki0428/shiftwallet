@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4';
-const APP_VERSION='4.1';
+const APP_VERSION='4.2';
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
 const V1='shiftwallet.v1';
@@ -22,11 +22,11 @@ function hoursText(mins){const h=Math.max(0,mins)/60;return `${(Math.round(h*10)
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.1,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.2,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.1,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.2,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
@@ -46,7 +46,7 @@ function migrateV3(v){
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
   const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.1,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.2,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
@@ -72,28 +72,32 @@ function fixedTotal(){return state.fixedCosts.reduce((a,f)=>a+num(f.amount),0)}
 function daysInMonth(y,m){return new Date(y,m+1,0,12).getDate()}
 function dayInMonth(y,m,day){return new Date(y,m,Math.min(daysInMonth(y,m),Math.max(1,num(day,1))),12)}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
-function nextPayrollFor(w,ref=new Date()){
-  const today=parseDate(dateKey(ref));
-  for(let offset=-1;offset<=4;offset++){
-    const cm=new Date(today.getFullYear(),today.getMonth()+offset,1,12);
-    const close=dayInMonth(cm.getFullYear(),cm.getMonth(),w.closingDay);
-    const prevMonth=new Date(cm.getFullYear(),cm.getMonth()-1,1,12);
-    const prevClose=dayInMonth(prevMonth.getFullYear(),prevMonth.getMonth(),w.closingDay);
-    const payMonthOffset=num(w.payday)<=num(w.closingDay)?1:0;
-    const pm=new Date(cm.getFullYear(),cm.getMonth()+payMonthOffset,1,12);
-    const payDate=dayInMonth(pm.getFullYear(),pm.getMonth(),w.payday);
-    if(payDate>=today)return {start:addDays(prevClose,1),end:close,payDate};
+function payrollCycleForDate(w,ref=new Date()){
+  const today=parseDate(dateKey(ref)),y=today.getFullYear(),m=today.getMonth();
+  const closeThis=dayInMonth(y,m,w.closingDay);
+  let start,end;
+  if(today<=closeThis){
+    end=closeThis;
+    const prevMonth=new Date(y,m-1,1,12),prevClose=dayInMonth(prevMonth.getFullYear(),prevMonth.getMonth(),w.closingDay);
+    start=addDays(prevClose,1);
+  }else{
+    start=addDays(closeThis,1);
+    const nextMonth=new Date(y,m+1,1,12);
+    end=dayInMonth(nextMonth.getFullYear(),nextMonth.getMonth(),w.closingDay);
   }
-  return null
+  const payMonthOffset=num(w.payday)<=num(w.closingDay)?1:0;
+  const pm=new Date(end.getFullYear(),end.getMonth()+payMonthOffset,1,12);
+  const payDate=dayInMonth(pm.getFullYear(),pm.getMonth(),w.payday);
+  return {start,end,payDate};
 }
-function workplacePayrollEstimate(w,ref=new Date()){
-  const p=nextPayrollFor(w,ref);if(!p)return null;
-  const start=dateKey(p.start),end=dateKey(p.end);
+function workplaceIncomeSummary(w,ref=new Date()){
+  const cycle=payrollCycleForDate(w,ref),start=dateKey(cycle.start),end=dateKey(cycle.end),today=dateKey(ref);
   const shifts=state.shifts.filter(s=>s.workplaceId===w.id&&s.date>=start&&s.date<=end);
-  return {...p,pay:sumPay(shifts),count:shifts.length}
+  const currentShifts=shifts.filter(s=>s.date<=today);
+  return {...cycle,currentPay:sumPay(currentShifts),plannedPay:sumPay(shifts),currentEnd:parseDate(today),currentCount:currentShifts.length,plannedCount:shifts.length};
 }
 function shortDate(d){return `${d.getMonth()+1}/${d.getDate()}`}
-function payDateLabel(d){return `${d.getMonth()+1}月${d.getDate()}日`}
+function payDateLabel(d){return `${d.getMonth()+1}/${d.getDate()}`}
 function toast(text){const t=$('toast');t.textContent=text;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),1500)}
 function openDialog(id){$(id).showModal()}
 function closeDialogs(){document.querySelectorAll('dialog[open]').forEach(d=>d.close())}
@@ -101,12 +105,14 @@ function formatShiftLine(s){const p=preset(s.presetId),w=workplace(s.workplaceId
 
 function renderAll(){renderHome();renderSettings();renderShiftPage();renderSelects()}
 function renderHome(){
-  const now=new Date(),mk=monthKey(now),all=monthShifts(mk),today=todayKey(),current=all.filter(s=>s.date<=today),planned=sumPay(all),cur=sumPay(current),fixed=fixedTotal();
+  const now=new Date(),today=todayKey(),fixed=fixedTotal();
+  const incomes=state.workplaces.map(w=>({w,s:workplaceIncomeSummary(w,now)}));
+  const cur=incomes.reduce((a,x)=>a+x.s.currentPay,0),planned=incomes.reduce((a,x)=>a+x.s.plannedPay,0);
   $('currentMonthLabel').textContent=monthLabel(now);
   $('currentIncome').textContent=yen(cur);$('plannedIncome').textContent=yen(planned);
   $('currentAfterFixed').textContent=yen(cur-fixed);$('plannedAfterFixed').textContent=yen(planned-fixed);$('fixedTotalHome').textContent=yen(fixed);
-  const payrolls=state.workplaces.map(w=>({w,p:workplacePayrollEstimate(w,now)})).filter(x=>x.p);
-  $('nextPayrollList').innerHTML=payrolls.length?payrolls.map(({w,p})=>`<div class="quiet-row"><div class="quiet-main"><b>${esc(w.name)}</b><div class="pay-period">${shortDate(p.start)}〜${shortDate(p.end)}勤務分</div><div class="pay-cycle">${num(w.closingDay)}日〆 · ${num(w.payday)}日給料</div></div><div class="quiet-side"><div class="pay-date">${payDateLabel(p.payDate)}</div><b>${yen(p.pay)}</b></div></div>`).join(''):'<div class="empty">バイト先を設定してください</div>';
+  $('currentIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.currentEnd)}</small></div><strong>${yen(s.currentPay)}</strong></div>`).join('');
+  $('plannedIncomeBreakdown').innerHTML=incomes.map(({w,s})=>`<div class="income-line"><div><b>${esc(w.name)}</b><small>${num(w.closingDay)}日〆 · ${num(w.payday)}日給料 · ${shortDate(s.start)}〜${shortDate(s.end)} · ${payDateLabel(s.payDate)}支給</small></div><strong>${yen(s.plannedPay)}</strong></div>`).join('');
   const goal=num(state.settings.monthlyGoal),remaining=Math.max(0,goal-planned),pct=goal?Math.min(100,planned/goal*100):0;
   $('goalAmountHome').textContent=yen(goal);$('goalRemainingHome').textContent=remaining?yen(remaining):'達成';$('goalProgress').style.width=`${pct}%`;
   const gp=preset(state.settings.goalPresetId),cp=calcPreset(gp),need=remaining<=0?0:(cp.pay?Math.ceil(remaining/cp.pay):null);
@@ -199,7 +205,7 @@ $('exportBtn').onclick=downloadBackup;
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.1.0').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.2.0').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();if(nowKey===lastRenderedDate)return;
