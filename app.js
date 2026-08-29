@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4';
-const APP_VERSION='4.6';
+const APP_VERSION='4.7';
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
 const V1='shiftwallet.v1';
@@ -30,11 +30,11 @@ function shiftMarkLabel(s){const p=preset(s.presetId),raw=(p?.name||workplace(s.
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.6,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.7,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.6,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.7,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
@@ -54,7 +54,7 @@ function migrateV3(v){
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
   const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.6,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.7,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
@@ -101,6 +101,65 @@ function payrollCycleForDate(w,ref=new Date()){
 function previousPayrollCycle(w,cycle){
   const end=addDays(cycle.start,-1),m=new Date(end.getFullYear(),end.getMonth()-1,1,12),prevClose=dayInMonth(m.getFullYear(),m.getMonth(),w.closingDay);
   return {start:addDays(prevClose,1),end};
+}
+function payrollCycleForPayMonth(w,year,month){
+  const payDate=dayInMonth(year,month,w.payday);
+  const closeMonth=num(w.payday)>num(w.closingDay)?new Date(year,month,1,12):new Date(year,month-1,1,12);
+  const end=dayInMonth(closeMonth.getFullYear(),closeMonth.getMonth(),w.closingDay);
+  const previousCloseMonth=new Date(end.getFullYear(),end.getMonth()-1,1,12);
+  const previousClose=dayInMonth(previousCloseMonth.getFullYear(),previousCloseMonth.getMonth(),w.closingDay);
+  return {start:addDays(previousClose,1),end,payDate};
+}
+function isConfiguredPaydayToday(w,ref=new Date()){
+  const payDate=dayInMonth(ref.getFullYear(),ref.getMonth(),w.payday);
+  return dateKey(payDate)===dateKey(ref);
+}
+function paidThisCalendarMonth(ref=new Date()){
+  const cycles=state.workplaces.map(w=>{
+    const cycle=payrollCycleForPayMonth(w,ref.getFullYear(),ref.getMonth()),start=dateKey(cycle.start),end=dateKey(cycle.end);
+    const shifts=state.shifts.filter(s=>s.workplaceId===w.id&&s.date>=start&&s.date<=end);
+    return {w,cycle,shifts,pay:sumPay(shifts)};
+  });
+  return {cycles,total:cycles.reduce((a,x)=>a+x.pay,0)};
+}
+function goalReferencePreset(cycles){
+  const counts=new Map();
+  cycles.forEach(x=>x.shifts.forEach(s=>{if(s.presetId)counts.set(s.presetId,(counts.get(s.presetId)||0)+1)}));
+  const byUsage=[...counts.entries()].sort((a,b)=>b[1]-a[1]).map(([id])=>preset(id)).find(p=>p&&calcPreset(p).pay>0);
+  if(byUsage)return byUsage;
+  const configured=preset(state.settings.goalPresetId);
+  if(configured&&calcPreset(configured).pay>0)return configured;
+  return state.presets.find(p=>calcPreset(p).pay>0)||null;
+}
+function daysInclusive(a,b){return Math.max(1,Math.round((parseDate(dateKey(b))-parseDate(dateKey(a)))/86400000)+1)}
+function decimal1(v){const n=Math.round(num(v)*10)/10;return Number.isInteger(n)?String(n):n.toFixed(1)}
+function maybeShowPaydayReport(ref=new Date()){
+  const goal=num(state.settings.monthlyGoal);
+  if(goal<=0||!state.workplaces.some(w=>isConfiguredPaydayToday(w,ref)))return;
+  const report=paidThisCalendarMonth(ref),actual=report.total,remaining=Math.max(0,goal-actual);
+  const paydayNames=state.workplaces.filter(w=>isConfiguredPaydayToday(w,ref)).map(w=>w.name);
+  const signature=[dateKey(ref),goal,actual,paydayNames.join('|')].join('::');
+  if(localStorage.getItem('shiftwallet.simple.paydayReportSeen')===signature)return;
+  const dialog=$('paydayReportDialog');if(!dialog||dialog.open)return;
+  localStorage.setItem('shiftwallet.simple.paydayReportSeen',signature);
+  $('paydayReportDate').textContent=`${ref.getMonth()+1}月${ref.getDate()}日 給料日`;
+  $('paydayReportMeta').textContent=`今月支給分 ${yen(actual)} / 目標 ${yen(goal)}`;
+  if(remaining<=0){
+    $('paydayReportMessage').textContent='目標月収を達成しました。';
+    $('paydayReportDetail').textContent='';
+  }else{
+    const p=goalReferencePreset(report.cycles),cp=p?calcPreset(p):null,need=cp?.pay?Math.ceil(remaining/cp.pay):null;
+    const starts=report.cycles.map(x=>x.cycle.start),ends=report.cycles.map(x=>x.cycle.end);
+    const start=new Date(Math.min(...starts.map(d=>d.getTime()))),end=new Date(Math.max(...ends.map(d=>d.getTime()))),weeks=daysInclusive(start,end)/7;
+    $('paydayReportMessage').textContent=`目標月収まで残り${yen(remaining)}でした。`;
+    if(p&&need!==null){
+      const perWeek=need/Math.max(1,weeks);
+      $('paydayReportDetail').textContent=`達成するには「${p.name}」であと${need}回シフトに出れば達成できました。平均すると週に＋${decimal1(perWeek)}日必要でした。`;
+    }else{
+      $('paydayReportDetail').textContent='シフトプリセットの時給・勤務時間を設定すると、必要なシフト回数を計算できます。';
+    }
+  }
+  dialog.showModal();
 }
 function workplaceIncomeSummary(w,ref=new Date()){
   const cycle=payrollCycleForDate(w,ref),start=dateKey(cycle.start),end=dateKey(cycle.end),today=dateKey(ref);
@@ -218,9 +277,9 @@ document.addEventListener('click',e=>{
 });
 $('exportBtn').onclick=downloadBackup;
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
-$('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));renderAll();toast('初期化しました')}};
+$('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));localStorage.removeItem('shiftwallet.simple.paydayReportSeen');renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.6.0').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.7.0').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();
@@ -232,7 +291,8 @@ function refreshForDateChange(){
   // 同じ日でもシフト終了時刻を過ぎたら「現在の月収」を更新する
   renderHome();
 }
-window.addEventListener('focus',refreshForDateChange);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshForDateChange()});
+window.addEventListener('focus',()=>{refreshForDateChange();maybeShowPaydayReport()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshForDateChange();maybeShowPaydayReport()}});
 setInterval(()=>{if(!document.hidden)refreshForDateChange()},60000);
 renderAll();
+setTimeout(()=>maybeShowPaydayReport(),120);
