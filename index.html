@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=4.11.0">
+  <link rel="stylesheet" href="./styles.css?v=5.0.3">
 </head>
 <body>
   <div class="app">
@@ -31,7 +31,7 @@
             <span>現在の月収</span>
             <strong id="currentIncome">¥0</strong>
             <small>固定費差引後 <b id="currentAfterFixed">¥0</b></small>
-            <div class="income-breakdown" id="currentIncomeBreakdown"></div>
+            <details class="breakdown-details"><summary>勤務先ごとの内訳</summary><div class="income-breakdown" id="currentIncomeBreakdown"></div></details>
           </div>
           <div class="summary-divider"></div>
           <div class="summary-block">
@@ -39,9 +39,9 @@
             <strong id="plannedIncome">¥0</strong>
             <small>固定費差引後 <b id="plannedAfterFixed">¥0</b></small>
             <small class="month-compare" id="monthComparison">前月比 —</small>
-            <div class="income-breakdown" id="plannedIncomeBreakdown"></div>
+            <details class="breakdown-details"><summary>勤務先ごとの内訳</summary><div class="income-breakdown" id="plannedIncomeBreakdown"></div></details>
           </div>
-          <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div>
+          <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div><details class="fixed-breakdown-details"><summary>固定費の内訳</summary><div class="income-breakdown" id="fixedBreakdownHome"></div></details>
           <div class="hours-line"><span>今月の勤務時間</span><b>現在 <em id="currentHoursHome">0時間</em> <i>/</i> 予定 <em id="plannedHoursHome">0時間</em></b></div>
         </section>
 
@@ -110,7 +110,7 @@
         <section class="card settings-card">
           <div class="section-title"><h3>月の目標月収</h3></div>
           <form id="goalForm" class="simple-form">
-            <label><span>目標金額</span><div class="money-input"><span>¥</span><input id="goalAmountInput" type="number" min="0" step="1000" inputmode="numeric" required></div></label>
+            <div id="goalFields" class="form-fields"></div>
             <button class="solid-btn" type="submit">保存</button>
           </form>
         </section>
@@ -140,6 +140,16 @@
           </div>
           <small>データはこの端末のブラウザ内に保存されます。</small>
         </details>
+
+        <details class="data-details dev-details">
+          <summary>開発・表示テスト</summary>
+          <div class="data-actions">
+            <button class="outline-btn" id="runLayoutCheckBtn" type="button">レイアウト診断</button>
+            <button class="outline-btn" id="generateTestDataBtn" type="button">テストデータに切り替える</button>
+            <button class="outline-btn" id="restoreTestDataBtn" type="button">元のデータに戻す</button>
+          </div>
+          <small id="layoutCheckResult">通常利用では触る必要はありません。新機能追加後の見切れ確認用です。</small>
+        </details>
       </section>
     </main>
 
@@ -161,13 +171,7 @@
   <dialog id="workplaceDialog" class="dialog">
     <form class="dialog-card" id="workplaceForm">
       <div class="dialog-head"><h3 id="workplaceDialogTitle">バイト先を追加</h3><button class="close-btn" type="button" data-close>×</button></div>
-      <input type="hidden" id="workplaceId">
-      <label><span>バイト先の名前</span><input id="workplaceName" maxlength="40" required placeholder="例：ぼってんの湯"></label>
-      <label><span>時給</span><div class="money-input"><span>¥</span><input id="workplaceWage" type="number" min="0" step="1" inputmode="numeric" required></div></label>
-      <div class="two-col">
-        <label><span>締め日</span><div class="suffix-input"><input id="workplaceClosingDay" type="number" min="1" max="31" step="1" inputmode="numeric" required><span>日</span></div></label>
-        <label><span>給料日</span><div class="suffix-input"><input id="workplacePayday" type="number" min="1" max="31" step="1" inputmode="numeric" required><span>日</span></div></label>
-      </div>
+      <div id="workplaceFields" class="form-fields"></div>
       <small class="form-note">給料日が締め日より後なら同月、同日以前なら翌月の支給として計算します。31日は短い月では月末扱いです。</small>
       <button class="solid-btn" type="submit">保存</button>
     </form>
@@ -176,11 +180,7 @@
   <dialog id="presetDialog" class="dialog">
     <form class="dialog-card" id="presetForm">
       <div class="dialog-head"><h3 id="presetDialogTitle">プリセットを追加</h3><button class="close-btn" type="button" data-close>×</button></div>
-      <input type="hidden" id="presetId">
-      <label><span>バイト先</span><select id="presetWorkplace" required></select></label>
-      <label><span>名前</span><input id="presetName" maxlength="30" required placeholder="例：A班"></label>
-      <div class="two-col"><label><span>開始</span><div class="native-control"><input id="presetStart" type="time" required></div></label><label><span>終了</span><div class="native-control"><input id="presetEnd" type="time" required></div></label></div>
-      <label><span>休憩時間</span><div class="suffix-input"><input id="presetBreak" type="number" min="0" max="600" step="5" inputmode="numeric" value="0" required><span>分</span></div></label>
+      <div id="presetFields" class="form-fields"></div>
       <button class="solid-btn" type="submit">保存</button>
     </form>
   </dialog>
@@ -188,9 +188,7 @@
   <dialog id="fixedDialog" class="dialog">
     <form class="dialog-card" id="fixedForm">
       <div class="dialog-head"><h3 id="fixedDialogTitle">固定費を追加</h3><button class="close-btn" type="button" data-close>×</button></div>
-      <input type="hidden" id="fixedId">
-      <label><span>名前</span><input id="fixedName" maxlength="40" required placeholder="例：携帯料金"></label>
-      <label><span>毎月の金額</span><div class="money-input"><span>¥</span><input id="fixedAmount" type="number" min="0" step="1" inputmode="numeric" required></div></label>
+      <div id="fixedFields" class="form-fields"></div>
       <button class="solid-btn" type="submit">保存</button>
     </form>
   </dialog>
@@ -198,12 +196,7 @@
   <dialog id="shiftDialog" class="dialog">
     <form class="dialog-card" id="shiftForm">
       <div class="dialog-head"><h3 id="shiftDialogTitle">シフトを追加</h3><button class="close-btn" type="button" data-close>×</button></div>
-      <input type="hidden" id="shiftId">
-      <label><span>日付</span><div class="native-control"><input id="shiftDate" type="date" required></div></label>
-      <label><span>バイト先</span><select id="shiftWorkplace" required></select></label>
-      <div class="two-col"><label><span>開始</span><div class="native-control"><input id="shiftStart" type="time" required></div></label><label><span>終了</span><div class="native-control"><input id="shiftEnd" type="time" required></div></label></div>
-      <label><span>時給</span><div class="money-input"><span>¥</span><input id="shiftWage" type="number" min="0" step="1" inputmode="numeric" required></div></label>
-      <label><span>休憩時間</span><div class="suffix-input"><input id="shiftBreak" type="number" min="0" max="600" step="5" inputmode="numeric" required><span>分</span></div></label>
+      <div id="shiftFields" class="form-fields"></div>
       <small class="form-note">ここで追加したシフトはプリセットには登録されません。</small>
       <button class="solid-btn" type="submit">保存</button>
     </form>
@@ -221,7 +214,7 @@
     </form>
   </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=4.11.0"></script>
+  <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" type="button" hidden></button></div>
+  <script src="./app.js?v=5.0.3"></script>
 </body>
 </html>
