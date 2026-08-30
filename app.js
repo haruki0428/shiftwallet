@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4'; // Keep the storage key so existing installations migrate in place.
-const APP_VERSION='5.0.3';
+const APP_VERSION='5.0.4';
 const SCHEMA_VERSION=5;
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
@@ -351,9 +351,9 @@ function renderSettings(){
 function renderShiftPage(){
   $('calendarMonthTitle').textContent=monthLabel(viewMonth);
   const presets=state.presets;
-  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" style="--shift-color:${presetColor(p)}" data-select-preset="${p.id}"><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">プリセットなしでも日付タップで追加できます</div>';
+  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" style="--shift-color:${presetColor(p)}" data-select-preset="${p.id}" aria-pressed="${selectedPresetId===p.id?'true':'false'}"><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">プリセットなしでも日付タップで追加できます</div>';
   const sp=preset(selectedPresetId),panel=$('presetPanel');
-  $('addModeText').textContent=sp?`追加モード：${sp.name}（選択解除で単発追加）`:'日付タップで単発シフトを追加 / 登録済み日は編集';$('clearPresetSelection').hidden=!sp;
+  $('addModeText').textContent=sp?`追加モード：${sp.name}（同じプリセットを再タップで解除）`:'プリセットをタップで追加モード / 日付タップで単発追加';
   panel.classList.toggle('adding',!!sp);panel.style.setProperty('--mode-color',sp?presetColor(sp):'var(--line-strong)');
   renderCalendar();renderWeeklyHours();
   const list=monthShifts(monthKey(viewMonth));$('shiftCount').textContent=`${list.length}件`;$('viewMonthIncome').textContent=yen(sumPay(list));
@@ -445,7 +445,6 @@ document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeDialogs));
 
 $('prevMonth').onclick=()=>{viewMonth=addMonths(viewMonth,-1);renderShiftPage()};$('nextMonth').onclick=()=>{viewMonth=addMonths(viewMonth,1);renderShiftPage()};
-$('clearPresetSelection').onclick=()=>{selectedPresetId='';renderShiftPage()};
 $('calendarPresetStrip').addEventListener('click',e=>{const b=e.target.closest('[data-select-preset]');if(!b)return;selectedPresetId=selectedPresetId===b.dataset.selectPreset?'':b.dataset.selectPreset;renderShiftPage()});
 $('calendar').addEventListener('click',e=>{const b=e.target.closest('[data-date]');if(!b)return;const p=preset(selectedPresetId);if(p){if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}addPresetToDate(p,b.dataset.date);return}const items=state.shifts.filter(s=>s.date===b.dataset.date);if(items.length){openDay(b.dataset.date);return}if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}openManualShift(b.dataset.date)});
 $('addShiftForDayBtn').onclick=()=>openManualShift($('addShiftForDayBtn').dataset.date);
@@ -469,7 +468,7 @@ $('generateTestDataBtn').onclick=generateTestData;$('restoreTestDataBtn').onclic
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=DataStore.reset();selectedPresetId='';localStorage.removeItem('shiftwallet.simple.paydayReportSeen');renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=5.0.3').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=5.0.4').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();
