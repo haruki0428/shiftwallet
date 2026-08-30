@@ -26,15 +26,15 @@ const WORK_COLORS=['#6b7565','#806958','#657086','#816b67','#736f57','#6e667a','
 function workplaceColor(id){const i=Math.max(0,state.workplaces.findIndex(w=>w.id===id));return WORK_COLORS[i%WORK_COLORS.length]}
 function presetColor(p){if(!p)return '#77736b';const wi=Math.max(0,state.workplaces.findIndex(w=>w.id===p.workplaceId)),same=state.presets.filter(x=>x.workplaceId===p.workplaceId),pi=Math.max(0,same.findIndex(x=>x.id===p.id));return SHIFT_COLORS[(wi*3+pi)%SHIFT_COLORS.length]}
 function shiftColor(s){const p=preset(s.presetId);return p?presetColor(p):workplaceColor(s.workplaceId)}
-function shiftMarkLabel(s){const p=preset(s.presetId),raw=(p?.name||workplace(s.workplaceId)?.name||'勤').replace(/\s+/g,'');return esc(raw.slice(0,2))}
+function shiftMarkLabel(s){const p=preset(s.presetId),raw=(p?.name||workplace(s.workplaceId)?.name||'勤').trim().replace(/\s+/g,' ');return esc(raw.slice(0,5))}
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.7,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.8,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.7,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.8,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
@@ -54,7 +54,7 @@ function migrateV3(v){
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
   const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.7,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.8,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
