@@ -90,11 +90,21 @@ button,.solid-btn,.outline-btn,.nav-btn,.plain-icon,.close-btn,.preset-chip{min-
 /* FormUI mounts reusable components into these containers. */
 .form-fields{display:grid;gap:var(--space-16);min-width:0}
 
-/* v5.0.5: tap the income block itself to reveal workplace details with motion. */
+/* v5.0.6: income and fixed-cost summaries use animated tap-to-expand details. */
 .income-summary-details{margin:0}
 .income-summary-trigger{list-style:none;cursor:pointer;position:relative;display:block;padding-right:var(--space-24);user-select:none}
 .income-summary-trigger::-webkit-details-marker{display:none}
 .income-summary-trigger::after{content:'＋';position:absolute;right:0;top:0;color:var(--muted);font-size:16px;line-height:1}
 .income-summary-details[open]>.income-summary-trigger::after{content:'−'}
 .income-breakdown-motion{overflow:hidden}.income-summary-details>.income-breakdown-motion>.income-breakdown{margin-top:0;padding-top:var(--space-20)}
-@media (prefers-reduced-motion:reduce){.income-breakdown-motion{scroll-behavior:auto}}
+@media (prefers-reduced-motion:reduce){.animated-details-motion{scroll-behavior:auto}}
+
+/* v5.0.6: fixed costs use the same tap-to-expand interaction and motion as income. */
+.animated-details-motion{overflow:hidden}
+.fixed-summary-details{grid-column:1/-1;margin:0}
+.fixed-summary-trigger{list-style:none;cursor:pointer;display:grid!important;grid-template-columns:minmax(0,1fr) auto 20px;align-items:center;column-gap:var(--space-8);user-select:none}
+.fixed-summary-trigger::-webkit-details-marker{display:none}
+.fixed-summary-trigger::after{content:'＋';color:var(--muted);font-size:16px;line-height:1;text-align:right;font-weight:400}
+.fixed-summary-details[open]>.fixed-summary-trigger::after{content:'−'}
+.fixed-breakdown-motion{margin:0 var(--space-20)}
+.fixed-summary-details>.fixed-breakdown-motion>.income-breakdown{margin-top:0;padding:0 0 var(--space-12);border-top:0}
