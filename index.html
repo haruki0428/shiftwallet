@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=4.8.0">
+  <link rel="stylesheet" href="./styles.css?v=4.9.0">
 </head>
 <body>
   <div class="app">
@@ -70,7 +70,7 @@
       <section class="page" data-page="shifts" id="page-shifts">
         <div class="section-head">
           <div>
-            <p class="subtle">プリセットを選び、日付をタップ</p>
+            <p class="subtle">プリセットでワンタップ / 日付から単発追加</p>
             <h2>シフト</h2>
           </div>
         </div>
@@ -97,6 +97,11 @@
           <span id="shiftCount">0件</span>
           <b id="viewMonthIncome">¥0</b>
         </div>
+
+        <section class="card week-hours-card">
+          <div class="section-title"><h3>週ごとの勤務時間</h3></div>
+          <div id="weeklyHoursList" class="weekly-hours-list"></div>
+        </section>
       </section>
 
       <section class="page" data-page="settings" id="page-settings">
@@ -149,6 +154,7 @@
     <form method="dialog" class="dialog-card">
       <div class="dialog-head"><div><p class="subtle">SHIFT</p><h3 id="dayDialogTitle">—</h3></div><button class="close-btn" type="button" data-close>×</button></div>
       <div id="dayShiftList" class="quiet-list"></div>
+      <button class="outline-btn" id="addShiftForDayBtn" type="button">＋ この日にシフトを追加</button>
     </form>
   </dialog>
 
@@ -191,12 +197,14 @@
 
   <dialog id="shiftDialog" class="dialog">
     <form class="dialog-card" id="shiftForm">
-      <div class="dialog-head"><h3>シフトを編集</h3><button class="close-btn" type="button" data-close>×</button></div>
+      <div class="dialog-head"><h3 id="shiftDialogTitle">シフトを追加</h3><button class="close-btn" type="button" data-close>×</button></div>
       <input type="hidden" id="shiftId">
       <label><span>日付</span><input id="shiftDate" type="date" required></label>
       <label><span>バイト先</span><select id="shiftWorkplace" required></select></label>
       <div class="two-col"><label><span>開始</span><input id="shiftStart" type="time" required></label><label><span>終了</span><input id="shiftEnd" type="time" required></label></div>
+      <label><span>時給</span><div class="money-input"><span>¥</span><input id="shiftWage" type="number" min="0" step="1" inputmode="numeric" required></div></label>
       <label><span>休憩時間</span><div class="suffix-input"><input id="shiftBreak" type="number" min="0" max="600" step="5" inputmode="numeric" required><span>分</span></div></label>
+      <small class="form-note">ここで追加したシフトはプリセットには登録されません。</small>
       <button class="solid-btn" type="submit">保存</button>
     </form>
   </dialog>
@@ -214,6 +222,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=4.8.0"></script>
+  <script src="./app.js?v=4.9.0"></script>
 </body>
 </html>

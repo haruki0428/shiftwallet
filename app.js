@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4';
-const APP_VERSION='4.7';
+const APP_VERSION='4.9';
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
 const V1='shiftwallet.v1';
@@ -30,15 +30,15 @@ function shiftMarkLabel(s){const p=preset(s.presetId),raw=(p?.name||workplace(s.
 function defaultState(){
   const w={id:uid(),name:'バイト先',hourlyWage:1000,closingDay:10,payday:25};
   const p={id:uid(),workplaceId:w.id,name:'夕方',start:'17:00',end:'21:00',breakMinutes:0};
-  return {version:4.8,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
+  return {version:4.9,settings:{monthlyGoal:100000,goalPresetId:p.id},workplaces:[w],presets:[p],shifts:[],fixedCosts:[]};
 }
 function normalize(s){
   const b=defaultState();
-  const o={...b,...s,version:4.8,settings:{...b.settings,...(s?.settings||{})}};
+  const o={...b,...s,version:4.9,settings:{...b.settings,...(s?.settings||{})}};
   o.workplaces=Array.isArray(o.workplaces)&&o.workplaces.length?o.workplaces.map(w=>({id:w.id||uid(),name:w.name||'バイト先',hourlyWage:Math.max(0,num(w.hourlyWage??w.wage)),closingDay:Math.min(31,Math.max(1,num(w.closingDay??w.cutoffDay,10))),payday:Math.min(31,Math.max(1,num(w.payday??w.payDay,25)))})):b.workplaces;
   const wp0=o.workplaces[0].id;
   o.presets=Array.isArray(o.presets)?o.presets.map(p=>({id:p.id||uid(),workplaceId:o.workplaces.some(w=>w.id===p.workplaceId)?p.workplaceId:wp0,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:Math.max(0,num(p.breakMinutes??p.breakMins))})):[];
-  o.shifts=Array.isArray(o.shifts)?o.shifts.map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:o.workplaces.some(w=>w.id===x.workplaceId)?x.workplaceId:wp0,presetId:x.presetId||'',start:x.start||x.planned?.start||'17:00',end:x.end||x.planned?.end||'21:00',breakMinutes:Math.max(0,num(x.breakMinutes??x.breakMins??x.planned?.breakMinutes))})):[];
+  o.shifts=Array.isArray(o.shifts)?o.shifts.map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:o.workplaces.some(w=>w.id===x.workplaceId)?x.workplaceId:wp0,presetId:x.presetId||'',start:x.start||x.planned?.start||'17:00',end:x.end||x.planned?.end||'21:00',breakMinutes:Math.max(0,num(x.breakMinutes??x.breakMins??x.planned?.breakMinutes)),hourlyWage:(x.hourlyWage===null||x.hourlyWage===undefined)?null:Math.max(0,num(x.hourlyWage))})):[];
   o.fixedCosts=Array.isArray(o.fixedCosts)?o.fixedCosts.map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:Math.max(0,num(f.amount))})).filter(f=>f.amount>=0):[];
   o.settings.monthlyGoal=Math.max(0,num(o.settings.monthlyGoal??o.settings.salaryGoal,100000));
   if(!o.presets.some(p=>p.id===o.settings.goalPresetId))o.settings.goalPresetId=o.presets[0]?.id||'';
@@ -52,9 +52,9 @@ function migrateV3(v){
   });
   const fallback=workplaces[0]?.id||uid();
   const presets=(v.presets||[]).map(p=>({id:p.id||uid(),workplaceId:p.workplaceId||fallback,name:p.name||'シフト',start:p.start||'17:00',end:p.end||'21:00',breakMinutes:num(p.breakMinutes??p.breakMins)}));
-  const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins)}));
+  const shifts=(v.shifts||[]).map(x=>({id:x.id||uid(),date:x.date||todayKey(),workplaceId:x.workplaceId||fallback,presetId:x.presetId||'',start:x.planned?.start||x.start||'17:00',end:x.planned?.end||x.end||'21:00',breakMinutes:num(x.planned?.breakMinutes??x.breakMinutes??x.breakMins),hourlyWage:(x.hourlyWage===null||x.hourlyWage===undefined)?null:Math.max(0,num(x.hourlyWage))}));
   const fixedCosts=(v.fixedCosts||[]).filter(f=>f.enabled!==false&&(!f.recurrence||f.recurrence==='monthly')).map(f=>({id:f.id||uid(),name:f.name||'固定費',amount:num(f.priceHistory?.at?.(-1)?.amount??f.amount)}));
-  return normalize({version:4.8,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
+  return normalize({version:4.9,settings:{monthlyGoal:num(v.settings?.salaryGoal??v.settings?.monthlyGoal,100000),goalPresetId:v.settings?.goalPresetId||''},workplaces:workplaces.length?workplaces:undefined,presets,shifts,fixedCosts});
 }
 function load(){
   try{
@@ -72,9 +72,20 @@ let deferredInstallPrompt=null;
 function save(){state=normalize(state);localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
 function workplace(id){return state.workplaces.find(w=>w.id===id)||state.workplaces[0]}
 function preset(id){return state.presets.find(p=>p.id===id)}
-function calcShift(s){const gross=minutesBetween(s.start,s.end),paid=Math.max(0,gross-num(s.breakMinutes));return {minutes:paid,pay:Math.round(paid/60*num(workplace(s.workplaceId)?.hourlyWage))}}
+function calcShift(s){const gross=minutesBetween(s.start,s.end),paid=Math.max(0,gross-num(s.breakMinutes)),wage=(s.hourlyWage===null||s.hourlyWage===undefined)?num(workplace(s.workplaceId)?.hourlyWage):Math.max(0,num(s.hourlyWage));return {minutes:paid,pay:Math.round(paid/60*wage),hourlyWage:wage}}
 function calcPreset(p){if(!p)return {minutes:0,pay:0};return calcShift({workplaceId:p.workplaceId,start:p.start,end:p.end,breakMinutes:p.breakMinutes})}
 function monthShifts(key){return state.shifts.filter(s=>s.date.startsWith(key)).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))}
+function visibleCalendarWeeks(){
+  const y=viewMonth.getFullYear(),m=viewMonth.getMonth(),first=new Date(y,m,1,12),start=new Date(y,m,1-first.getDay(),12);
+  return Array.from({length:6},(_,i)=>{const ws=addDays(start,i*7),we=addDays(ws,6),from=dateKey(ws),to=dateKey(we),items=state.shifts.filter(s=>s.date>=from&&s.date<=to),minutes=items.reduce((a,s)=>a+calcShift(s).minutes,0);return {start:ws,end:we,minutes,count:items.length}})
+}
+function renderWeeklyHours(){
+  const today=todayKey();
+  $('weeklyHoursList').innerHTML=visibleCalendarWeeks().map(w=>{
+    const from=dateKey(w.start),to=dateKey(w.end),current=today>=from&&today<=to;
+    return `<div class="week-hour-row ${current?'current':''}"><span>${shortDate(w.start)}〜${shortDate(w.end)}</span><b>${hoursText(w.minutes)}</b></div>`
+  }).join('');
+}
 function sumPay(list){return list.reduce((a,s)=>a+calcShift(s).pay,0)}
 function fixedTotal(){return state.fixedCosts.reduce((a,f)=>a+num(f.amount),0)}
 function daysInMonth(y,m){return new Date(y,m+1,0,12).getDate()}
@@ -208,11 +219,11 @@ function renderSettings(){
 function renderShiftPage(){
   $('calendarMonthTitle').textContent=monthLabel(viewMonth);
   const presets=state.presets;
-  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" style="--shift-color:${presetColor(p)}" data-select-preset="${p.id}"><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">設定からプリセットを作成してください</div>';
+  $('calendarPresetStrip').innerHTML=presets.length?presets.map(p=>`<button type="button" class="preset-chip ${selectedPresetId===p.id?'selected':''}" style="--shift-color:${presetColor(p)}" data-select-preset="${p.id}"><i class="color-swatch" style="--swatch:${presetColor(p)}"></i><b>${esc(p.name)}</b><small>${esc(workplace(p.workplaceId).name)} · ${esc(p.start)}–${esc(p.end)}</small></button>`).join(''):'<div class="empty">プリセットなしでも日付タップで追加できます</div>';
   const sp=preset(selectedPresetId),panel=$('presetPanel');
-  $('addModeText').textContent=sp?`追加モード：${sp.name}（選択解除で編集）`:'プリセット選択で追加 / 日付タップで編集';$('clearPresetSelection').hidden=!sp;
+  $('addModeText').textContent=sp?`追加モード：${sp.name}（選択解除で単発追加）`:'日付タップで単発シフトを追加 / 登録済み日は編集';$('clearPresetSelection').hidden=!sp;
   panel.classList.toggle('adding',!!sp);panel.style.setProperty('--mode-color',sp?presetColor(sp):'var(--line-strong)');
-  renderCalendar();
+  renderCalendar();renderWeeklyHours();
   const list=monthShifts(monthKey(viewMonth));$('shiftCount').textContent=`${list.length}件`;$('viewMonthIncome').textContent=yen(sumPay(list));
 }
 function renderCalendar(){
@@ -226,7 +237,8 @@ function renderCalendar(){
 }
 function openDay(date){
   const items=state.shifts.filter(s=>s.date===date).sort((a,b)=>a.start.localeCompare(b.start));$('dayDialogTitle').textContent=date.replaceAll('-','/');
-  $('dayShiftList').innerHTML=items.length?items.map(s=>`<div class="quiet-row shift-detail-row" style="--shift-color:${shiftColor(s)}"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${shiftColor(s)}"></i>${esc(formatShiftLine(s))}</b><small>${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分</small></div><div class="quiet-side"><b>${yen(calcShift(s).pay)}</b><div class="row-actions"><button type="button" class="mini-link" data-edit-shift="${s.id}">編集</button><button type="button" class="mini-link" data-delete-shift="${s.id}">削除</button></div></div></div>`).join(''):'<div class="empty">この日のシフトはありません</div>';
+  $('dayShiftList').innerHTML=items.length?items.map(s=>{const c=calcShift(s);return `<div class="quiet-row shift-detail-row" style="--shift-color:${shiftColor(s)}"><div class="quiet-main"><b><i class="color-swatch" style="--swatch:${shiftColor(s)}"></i>${esc(formatShiftLine(s))}</b><small>${esc(s.start)}–${esc(s.end)}　休憩${num(s.breakMinutes)}分　時給${yen(c.hourlyWage)}</small></div><div class="quiet-side"><b>${yen(c.pay)}</b><div class="row-actions"><button type="button" class="mini-link" data-edit-shift="${s.id}">編集</button><button type="button" class="mini-link" data-delete-shift="${s.id}">削除</button></div></div></div>`}).join(''):'<div class="empty">この日のシフトはありません</div>';
+  $('addShiftForDayBtn').dataset.date=date;
   openDialog('dayDialog');
 }
 function addPresetToDate(p,date){
@@ -243,8 +255,11 @@ function openPresetEditor(id=''){
 function openFixedEditor(id=''){
   const f=state.fixedCosts.find(x=>x.id===id);$('fixedDialogTitle').textContent=f?'固定費を編集':'固定費を追加';$('fixedId').value=f?.id||'';$('fixedName').value=f?.name||'';$('fixedAmount').value=f?.amount??'';openDialog('fixedDialog')
 }
+function openManualShift(date){
+  renderSelects();const w=state.workplaces[0];$('shiftDialogTitle').textContent='シフトを追加';$('shiftId').value='';$('shiftDate').value=date;$('shiftWorkplace').value=w?.id||'';$('shiftStart').value='09:00';$('shiftEnd').value='17:00';$('shiftWage').value=w?.hourlyWage??0;$('shiftBreak').value=0;closeDialogs();openDialog('shiftDialog')
+}
 function openShiftEditor(id){
-  const s=state.shifts.find(x=>x.id===id);if(!s)return;renderSelects();$('shiftId').value=s.id;$('shiftDate').value=s.date;$('shiftWorkplace').value=s.workplaceId;$('shiftStart').value=s.start;$('shiftEnd').value=s.end;$('shiftBreak').value=s.breakMinutes;closeDialogs();openDialog('shiftDialog')
+  const s=state.shifts.find(x=>x.id===id);if(!s)return;renderSelects();const c=calcShift(s);$('shiftDialogTitle').textContent='シフトを編集';$('shiftId').value=s.id;$('shiftDate').value=s.date;$('shiftWorkplace').value=s.workplaceId;$('shiftStart').value=s.start;$('shiftEnd').value=s.end;$('shiftWage').value=c.hourlyWage;$('shiftBreak').value=s.breakMinutes;closeDialogs();openDialog('shiftDialog')
 }
 function deleteWorkplace(id){
   if(state.workplaces.length<=1){toast('最後のバイト先は削除できません');return}
@@ -260,13 +275,15 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 $('prevMonth').onclick=()=>{viewMonth=addMonths(viewMonth,-1);renderShiftPage()};$('nextMonth').onclick=()=>{viewMonth=addMonths(viewMonth,1);renderShiftPage()};
 $('clearPresetSelection').onclick=()=>{selectedPresetId='';renderShiftPage()};
 $('calendarPresetStrip').addEventListener('click',e=>{const b=e.target.closest('[data-select-preset]');if(!b)return;selectedPresetId=selectedPresetId===b.dataset.selectPreset?'':b.dataset.selectPreset;renderShiftPage()});
-$('calendar').addEventListener('click',e=>{const b=e.target.closest('[data-date]');if(!b)return;const p=preset(selectedPresetId);if(p){if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}addPresetToDate(p,b.dataset.date)}else openDay(b.dataset.date)});
+$('calendar').addEventListener('click',e=>{const b=e.target.closest('[data-date]');if(!b)return;const p=preset(selectedPresetId);if(p){if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}addPresetToDate(p,b.dataset.date);return}const items=state.shifts.filter(s=>s.date===b.dataset.date);if(items.length){openDay(b.dataset.date);return}if(b.classList.contains('outside')){toast('前後の月は月を切り替えて追加してください');return}openManualShift(b.dataset.date)});
+$('addShiftForDayBtn').onclick=()=>openManualShift($('addShiftForDayBtn').dataset.date);
+$('shiftWorkplace').addEventListener('change',()=>{if(!$('shiftId').value)$('shiftWage').value=workplace($('shiftWorkplace').value)?.hourlyWage??0});
 $('goalForm').onsubmit=e=>{e.preventDefault();state.settings.monthlyGoal=Math.max(0,num($('goalAmountInput').value));save();toast('目標を保存しました')};
 $('addWorkplaceBtn').onclick=()=>openWorkplaceEditor();$('addPresetBtn').onclick=()=>openPresetEditor();$('addFixedBtn').onclick=()=>openFixedEditor();
 $('workplaceForm').onsubmit=e=>{e.preventDefault();const id=$('workplaceId').value||uid(),item={id,name:$('workplaceName').value.trim(),hourlyWage:Math.max(0,num($('workplaceWage').value)),closingDay:Math.min(31,Math.max(1,num($('workplaceClosingDay').value,10))),payday:Math.min(31,Math.max(1,num($('workplacePayday').value,25)))},i=state.workplaces.findIndex(x=>x.id===id);if(i>=0)state.workplaces[i]=item;else state.workplaces.push(item);save();closeDialogs();toast('保存しました')};
 $('presetForm').onsubmit=e=>{e.preventDefault();const id=$('presetId').value||uid(),item={id,workplaceId:$('presetWorkplace').value,name:$('presetName').value.trim(),start:$('presetStart').value,end:$('presetEnd').value,breakMinutes:Math.max(0,num($('presetBreak').value))},i=state.presets.findIndex(x=>x.id===id);if(i>=0)state.presets[i]=item;else state.presets.push(item);if(!state.settings.goalPresetId)state.settings.goalPresetId=id;save();closeDialogs();toast(`休憩${item.breakMinutes}分で保存しました`)};
 $('fixedForm').onsubmit=e=>{e.preventDefault();const id=$('fixedId').value||uid(),item={id,name:$('fixedName').value.trim(),amount:Math.max(0,num($('fixedAmount').value))},i=state.fixedCosts.findIndex(x=>x.id===id);if(i>=0)state.fixedCosts[i]=item;else state.fixedCosts.push(item);save();closeDialogs();toast('保存しました')};
-$('shiftForm').onsubmit=e=>{e.preventDefault();const s=state.shifts.find(x=>x.id===$('shiftId').value);if(!s)return;s.date=$('shiftDate').value;const oldWorkplace=s.workplaceId;s.workplaceId=$('shiftWorkplace').value;s.start=$('shiftStart').value;s.end=$('shiftEnd').value;s.breakMinutes=Math.max(0,num($('shiftBreak').value));if(oldWorkplace!==s.workplaceId)s.presetId='';save();closeDialogs();toast('シフトを更新しました')};
+$('shiftForm').onsubmit=e=>{e.preventDefault();const id=$('shiftId').value,workplaceId=$('shiftWorkplace').value,hourlyWage=Math.max(0,num($('shiftWage').value)),data={date:$('shiftDate').value,workplaceId,start:$('shiftStart').value,end:$('shiftEnd').value,breakMinutes:Math.max(0,num($('shiftBreak').value)),hourlyWage};if(!id){state.shifts.push({id:uid(),presetId:'',...data});save();closeDialogs();toast('シフトを追加しました');return}const s=state.shifts.find(x=>x.id===id);if(!s)return;const oldWorkplace=s.workplaceId;s.date=data.date;s.workplaceId=data.workplaceId;s.start=data.start;s.end=data.end;s.breakMinutes=data.breakMinutes;s.hourlyWage=s.presetId&&hourlyWage===num(workplace(data.workplaceId)?.hourlyWage)?null:hourlyWage;if(oldWorkplace!==s.workplaceId)s.presetId='';save();closeDialogs();toast('シフトを更新しました')};
 
 document.addEventListener('click',e=>{
   const q=a=>e.target.closest(`[${a}]`)?.getAttribute(a);
@@ -279,7 +296,7 @@ $('exportBtn').onclick=downloadBackup;
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=defaultState();selectedPresetId='';localStorage.setItem(KEY,JSON.stringify(state));localStorage.removeItem('shiftwallet.simple.paydayReportSeen');renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.7.0').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=4.9.0').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();
