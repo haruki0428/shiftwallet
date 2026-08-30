@@ -90,10 +90,11 @@ button,.solid-btn,.outline-btn,.nav-btn,.plain-icon,.close-btn,.preset-chip{min-
 /* FormUI mounts reusable components into these containers. */
 .form-fields{display:grid;gap:var(--space-16);min-width:0}
 
-/* v5.0.4: tap the income block itself to reveal workplace details. */
+/* v5.0.5: tap the income block itself to reveal workplace details with motion. */
 .income-summary-details{margin:0}
 .income-summary-trigger{list-style:none;cursor:pointer;position:relative;display:block;padding-right:var(--space-24);user-select:none}
 .income-summary-trigger::-webkit-details-marker{display:none}
 .income-summary-trigger::after{content:'＋';position:absolute;right:0;top:0;color:var(--muted);font-size:16px;line-height:1}
 .income-summary-details[open]>.income-summary-trigger::after{content:'−'}
-.income-summary-details>.income-breakdown{margin-top:var(--space-16);padding-top:var(--space-4)}
+.income-breakdown-motion{overflow:hidden}.income-summary-details>.income-breakdown-motion>.income-breakdown{margin-top:0;padding-top:var(--space-20)}
+@media (prefers-reduced-motion:reduce){.income-breakdown-motion{scroll-behavior:auto}}

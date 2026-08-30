@@ -1,7 +1,7 @@
 'use strict';
 
 const KEY='shiftwallet.simple.v4'; // Keep the storage key so existing installations migrate in place.
-const APP_VERSION='5.0.4';
+const APP_VERSION='5.0.5';
 const SCHEMA_VERSION=5;
 const V3='shiftwallet.v3';
 const V2='shiftwallet.v2';
@@ -440,6 +440,54 @@ function downloadBackup(){const a=document.createElement('a');const blob=new Blo
 
 FormUI.mountAll();
 
+// Smoothly expand/collapse the income breakdown while preserving native <details> semantics.
+function setupIncomeBreakdownAnimation(){
+  const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('.income-summary-details').forEach(details=>{
+    const summary=details.querySelector(':scope > .income-summary-trigger');
+    const panel=details.querySelector(':scope > .income-breakdown-motion');
+    if(!summary||!panel||details.dataset.animated==='1')return;
+    details.dataset.animated='1';
+    const clean=()=>{
+      panel.style.height='';
+      panel.style.opacity='';
+      panel.style.transform='';
+      panel.style.overflow='';
+      panel.style.willChange='';
+      details.dataset.animating='0';
+    };
+    summary.addEventListener('click',e=>{
+      e.preventDefault();
+      if(details.dataset.animating==='1')return;
+      const opening=!details.open;
+      if(reducedMotion){details.open=opening;return}
+      details.dataset.animating='1';
+      panel.style.overflow='hidden';
+      panel.style.willChange='height, opacity, transform';
+      if(opening){
+        details.open=true;
+        const target=Math.max(1,panel.scrollHeight);
+        const anim=panel.animate([
+          {height:'0px',opacity:0,transform:'translateY(-6px)'},
+          {height:`${target}px`,opacity:1,transform:'translateY(0)'}
+        ],{duration:280,easing:'cubic-bezier(.22,1,.36,1)',fill:'both'});
+        anim.addEventListener('finish',clean,{once:true});
+        anim.addEventListener('cancel',clean,{once:true});
+      }else{
+        const start=Math.max(1,panel.getBoundingClientRect().height||panel.scrollHeight);
+        const anim=panel.animate([
+          {height:`${start}px`,opacity:1,transform:'translateY(0)'},
+          {height:'0px',opacity:0,transform:'translateY(-6px)'}
+        ],{duration:220,easing:'cubic-bezier(.4,0,.2,1)',fill:'both'});
+        const close=()=>{details.open=false;clean()};
+        anim.addEventListener('finish',close,{once:true});
+        anim.addEventListener('cancel',close,{once:true});
+      }
+    });
+  });
+}
+setupIncomeBreakdownAnimation();
+
 // navigation
 document.querySelectorAll('[data-nav]').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('[data-nav]').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.dataset.page===btn.dataset.nav));if(btn.dataset.nav==='shifts')renderShiftPage();window.scrollTo({top:0,behavior:'instant'})}));
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeDialogs));
@@ -468,7 +516,7 @@ $('generateTestDataBtn').onclick=generateTestData;$('restoreTestDataBtn').onclic
 $('importInput').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{state=normalize(JSON.parse(await f.text()));save();toast('読み込みました')}catch{toast('読み込めませんでした')}e.target.value=''};
 $('resetBtn').onclick=()=>{if(confirm('ShiftWalletのデータをすべて削除しますか？')){state=DataStore.reset();selectedPresetId='';localStorage.removeItem('shiftwallet.simple.paydayReportSeen');renderAll();toast('初期化しました')}};
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('installBtn').hidden=false});$('installBtn').onclick=async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('installBtn').hidden=true};
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=5.0.4').catch(console.error));
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=5.0.5').catch(console.error));
 let lastRenderedDate=todayKey();
 function refreshForDateChange(){
   const nowKey=todayKey();

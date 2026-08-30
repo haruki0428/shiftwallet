@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=5.0.4">
+  <link rel="stylesheet" href="./styles.css?v=5.0.5">
 </head>
 <body>
   <div class="app">
@@ -34,7 +34,7 @@
                 <strong id="currentIncome">¥0</strong>
                 <small>固定費差引後 <b id="currentAfterFixed">¥0</b></small>
               </summary>
-              <div class="income-breakdown" id="currentIncomeBreakdown"></div>
+              <div class="income-breakdown-motion"><div class="income-breakdown" id="currentIncomeBreakdown"></div></div>
             </details>
           </div>
           <div class="summary-divider"></div>
@@ -46,7 +46,7 @@
                 <small>固定費差引後 <b id="plannedAfterFixed">¥0</b></small>
                 <small class="month-compare" id="monthComparison">前月比 —</small>
               </summary>
-              <div class="income-breakdown" id="plannedIncomeBreakdown"></div>
+              <div class="income-breakdown-motion"><div class="income-breakdown" id="plannedIncomeBreakdown"></div></div>
             </details>
           </div>
           <div class="fixed-line"><span>毎月の固定費</span><b id="fixedTotalHome">¥0</b></div><details class="fixed-breakdown-details"><summary>固定費の内訳</summary><div class="income-breakdown" id="fixedBreakdownHome"></div></details>
@@ -222,6 +222,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastAction" type="button" hidden></button></div>
-  <script src="./app.js?v=5.0.4"></script>
+  <script src="./app.js?v=5.0.5"></script>
 </body>
 </html>
